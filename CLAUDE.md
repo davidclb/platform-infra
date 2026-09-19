@@ -1,114 +1,111 @@
 # CLAUDE.md — platform-infra
 
-Instructions pour Claude Code sur ce repo. Lire avant toute action.
+Instructions for Claude Code on this repo. Read before taking any action.
 
-## Objectif du projet
+## Project goal
 
-Homelab Proxmox : un vrai lab, reproductible, commissionable/décommissionable
-à la volée. Ce n'est pas un projet de démo statique — c'est le terrain de
-montée en compétence DevSecOps de l'utilisateur, et une pièce d'entretien
-concrète dans sa gigaroadmap (voir `DevSecOps-IDP-Roadmap-6mois.md` dans le
-2ndBrain — ce fichier CLAUDE.md ne remplace pas la roadmap, il la complète
-pour ce repo précis). Deux choses comptent autant que le résultat :
-- que le lab marche (up/down propre, reproductible)
-- que l'utilisateur sache l'expliquer, le défendre, et le refaire seul,
-  parce que c'est lui qui sera interrogé dessus en entretien, pas Claude.
+Proxmox homelab: a real lab, reproducible, that can be spun up and torn down
+on demand. This is not a static demo project — it's the user's DevSecOps
+skill-building ground, and a concrete talking point for their giga-roadmap
+job search (see `DevSecOps-IDP-Roadmap-6mois.md` in the 2ndBrain — this
+CLAUDE.md doesn't replace that roadmap, it complements it for this specific
+repo). Two things matter as much as the end result:
+- the lab actually works (clean up/down, reproducible)
+- the user can explain it, defend it, and rebuild it alone, because they're
+  the one who'll be interviewed on it, not Claude.
 
-## Règle #0 — Gouvernance de l'IA sur ce repo
+## Rule #0 — AI governance on this repo
 
-Contrairement aux repos de code applicatif (Go — Ghamr, Morgoth,
-vuln-server), où c'est zéro IA dans le code committé, ici l'IA PEUT
-scaffolder et écrire de l'infra. Mais trois garde-fous s'appliquent
-ensemble, jamais l'un sans l'autre :
+Unlike application code repos (Go — Ghamr, Morgoth, vuln-server), where the
+rule is zero AI in committed code, here AI CAN scaffold and write
+infrastructure. But three guardrails apply together, never one without the
+others:
 
-**1. Garde-fou humain — les décisions d'architecture restent à l'utilisateur.**
-- Claude ne tranche pas seul un choix structurant (provider, découpage des
-  modules, pattern réseau, stratégie de secrets, etc.) : il présente les
-  options, leurs compromis, et une recommandation — l'utilisateur décide.
-- Avant d'écrire un fichier nouveau ou une décision non triviale, Claude
-  confirme l'approche pas à pas plutôt que de livrer un bloc fini d'un coup.
-- Objectif explicite : que l'utilisateur soit capable de justifier et de
-  reproduire seul, en entretien, chaque choix du repo — pas seulement de
-  savoir qu'il existe.
+**1. Human guardrail — architecture decisions stay with the user.**
+- Claude does not decide alone on a structuring choice (provider, module
+  breakdown, network pattern, secrets strategy, etc.): it presents options,
+  their trade-offs, and a recommendation — the user decides.
+- Before writing a new file or making a non-trivial decision, Claude
+  confirms the approach step by step rather than delivering a finished
+  block all at once.
+- Explicit goal: the user should be able to justify and reproduce, alone,
+  in an interview, every choice in this repo — not just know it exists.
 
-**2. Garde-fou pédagogique — signaler ce qui vaut la peine d'être fait à la main.**
-- Dès qu'une action a de la valeur pédagogique pour l'utilisateur (un bloc
-  de logique qu'il devrait taper lui-même pour vraiment le comprendre et
-  pouvoir le refaire/défendre en entretien — pas du boilerplate répétitif,
-  et pas non plus une action sur ses propres comptes/identifiants qui de
-  toute façon ne peut être faite que par lui), Claude s'arrête et demande
-  explicitement : le faire, ou laisser l'utilisateur le faire/le taper
-  lui-même ? **Mode bloquant** : on attend la réponse avant d'avancer, on
-  ne signale pas juste en continuant.
-- Le scaffolding répétitif (structure de dossiers, YAML boilerplate) peut
-  être produit directement ; la logique d'un module, un choix de resource
-  block, une policy de sécurité relèvent de ce garde-fou.
+**2. Learning guardrail — flag what's worth doing by hand.**
+- Whenever an action has learning value for the user (a piece of logic they
+  should type themselves to really understand it and be able to
+  rebuild/defend it in an interview — not repetitive boilerplate, and not
+  an action on their own accounts/credentials that only they can do
+  anyway), Claude stops and explicitly asks: do it, or let the user do/type
+  it themselves? **Blocking mode**: wait for the answer before proceeding,
+  don't just flag it and continue.
+- Repetitive scaffolding (folder structure, YAML boilerplate) can be
+  produced directly; a module's logic, a resource block choice, a security
+  policy fall under this guardrail.
 
-**3. Garde-fou automatisé — aucune confiance non vérifiée par une machine.**
-- Un CLAUDE.md peut halluciner ou être mal suivi. Une policy-as-code en
-  pipeline ne ment jamais.
-- Toute config produite avec l'aide de Claude (Terraform, Kustomize, Ansible)
-  doit passer par un contrôle automatisé avant merge : lint + scan de
-  sécurité (tfsec/Checkov côté Terraform, Kyverno/conftest côté K8s).
-- Si ce garde-fou n'existe pas encore pour une couche donnée, le dire
-  explicitement plutôt que de committer comme s'il existait — et proposer
-  de le poser en même temps que le premier fichier concerné, pas après coup.
+**3. Automated guardrail — no trust unverified by a machine.**
+- A CLAUDE.md can hallucinate or be poorly followed. A policy-as-code
+  pipeline never lies.
+- Any config produced with Claude's help (Terraform, Kustomize, Ansible)
+  must pass an automated check before merge: lint + security scan
+  (tfsec/Checkov for Terraform, Kyverno/conftest for K8s).
+- If this guardrail doesn't exist yet for a given layer, say so explicitly
+  rather than committing as if it did — and propose adding it alongside the
+  first relevant file, not as an afterthought.
 
-Ne jamais committer à l'aveugle : si du travail non lié se mélange à une
-session, trier par sujet et proposer des commits atomiques.
+Never commit blindly: if unrelated work gets mixed into a session, sort by
+topic and propose atomic commits.
 
-## Conventions du repo
+## Repo conventions
 
-- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`) sur tous les
-  commits.
-- **ADR** (`docs/adr/`) : un fichier par choix structurant (ex: pourquoi
-  OpenTofu plutôt que Terraform, pourquoi Kustomize plutôt que Helm pour
-  telle couche, pourquoi GitLab SaaS plutôt que self-hébergé). Sert
-  directement l'objectif "justifier chaque choix en entretien".
+- **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`) on every
+  commit.
+- **ADRs** (`docs/adr/`): one file per structuring choice (e.g. why
+  OpenTofu over Terraform, why Kustomize over Helm for a given layer, why
+  GitLab SaaS over self-hosted). Directly serves the "justify every choice
+  in an interview" goal.
 - **MR template + definition of done** (`.gitlab/merge_request_templates/`)
-  avec checklist avant merge sur `main` — même en solo, entraîne le réflexe
-  de revue.
-- **Secrets** : jamais en clair, dès le premier commit. SOPS + Age (voir
-  roadmap Phase 6.6 pour la cible complète avec Vault).
-- **CODEOWNERS** : présent dès Phase 0 même en solo (exercice de convention,
-  utilisateur = seul owner pour l'instant).
-- **Pre-commit hooks (Gitleaks)** : actifs avant même le premier fichier
-  Terraform/OpenTofu — filet anti-secret dès le premier commit, pas ajouté
-  après coup.
-- **Branche `main` protégée** sur GitLab (pas de force-push direct) — à
-  déprotéger temporairement seulement si nécessaire, et à toujours remettre
-  ensuite.
+  with a checklist before merging into `main` — even solo, it builds the
+  review habit.
+- **Secrets**: never in plaintext, from the very first commit. SOPS + Age
+  (see roadmap Phase 6.6 for the full target state with Vault).
+- **CODEOWNERS**: present from Phase 0 even solo (convention exercise, user
+  = sole owner for now).
+- **Pre-commit hooks (Gitleaks)**: active before the first
+  Terraform/OpenTofu file even exists — secret-leak safety net from the
+  first commit, not bolted on afterward.
+- **`main` branch protected** on GitLab (no direct force-push) — only
+  unprotect temporarily if needed, and always re-protect afterward.
 
-## Contexte technique
+## Technical context
 
-- Homelab Proxmox, monorepo (`terraform/`, `ansible/`, `argocd/apps/<app>/base+overlays/`).
-- Hébergé sur **GitLab SaaS** (`gitlab.com/davidclb/platform-infra`) avec
-  **GitLab CI** — volontairement distinct de GitHub Actions utilisé sur les
-  repos d'apps (Ghamr/Yoshu/Arbre), pour couvrir les deux écosystèmes
-  CI/CD du marché. Ne pas basculer ce repo vers GitHub sans re-décision
-  explicite.
-  - Choix délibéré face à un self-hébergé sur le homelab lui-même : le
-    homelab est le DEV/LAB "tout casser OK", donc la source de vérité Git
-    + CI doit rester hors de l'infra qu'elle pilote (même logique que le
-    state Terraform sur Oracle/S3 en Phase 3.1, jamais sur le cluster
-    homelab). Idée à explorer séparément : héberger une forge (Gitea/GitLab
-    CE) comme *application* du homelab plus tard, pas comme source de
-    vérité pilotant le homelab.
-- Trunk-based (main + branches courtes + MR), pas de Git Flow.
-- Tooling piloté depuis le laptop uniquement (agentless), jamais depuis les
-  VMs cibles.
-- **OpenTofu** (pas Terraform officiel) : greenfield, licence OSI propre,
-  skills 100% transférables vers Terraform. En entretien/CV : "Terraform/OpenTofu".
-  (Terragrunt : pas encore décidé — à trancher quand le besoin d'orchestrer
-  plusieurs environnements/modules sera réel, pas avant.)
-- **mise** pour la gestion de versions d'outils (`.mise.toml` versionné).
-- Contrainte de conception : tout doit pouvoir se monter et se démonter
-  proprement (commission/décommission à la volée), pas seulement se
-  déployer une fois.
+- Proxmox homelab, monorepo (`terraform/`, `ansible/`, `argocd/apps/<app>/base+overlays/`).
+- Hosted on **GitLab SaaS** (`gitlab.com/davidclb/platform-infra`) with
+  **GitLab CI** — deliberately distinct from GitHub Actions used on the app
+  repos (Ghamr/Yoshu/Arbre), to cover both CI/CD ecosystems on the market.
+  Don't move this repo to GitHub without an explicit re-decision.
+  - Deliberate choice over self-hosting on the homelab itself: the homelab
+    is the DEV/LAB where it's fine to break everything, so the Git source
+    of truth + CI must stay outside the infrastructure it drives (same
+    logic as the Terraform state living on Oracle/S3 in Phase 3.1, never on
+    the homelab cluster). Idea to explore separately: hosting a forge
+    (Gitea/GitLab CE) as an *application* of the homelab later, not as the
+    source of truth driving the homelab.
+- Trunk-based (main + short-lived branches + MR), no Git Flow.
+- Tooling driven from the laptop only (agentless), never from the target
+  VMs.
+- **OpenTofu** (not official Terraform): greenfield, clean OSI license,
+  skills 100% transferable to Terraform. For interviews/CV:
+  "Terraform/OpenTofu".
+  (Terragrunt: not decided yet — to be settled once there's a real need to
+  orchestrate multiple environments/modules, not before.)
+- **mise** for tool version management (`.mise.toml` tracked in git).
+- Design constraint: everything must be able to come up and go down
+  cleanly (spin up/tear down on demand), not just deploy once.
 
-## Référence
+## Reference
 
-Voir `DevSecOps-IDP-Roadmap-6mois.md` (2ndBrain, `Active projects/IT/ROADMAP JUSTE SUIVRE/`)
-pour le plan complet 6 mois (Phases 0-8, stack cible détaillée, défis de
-réflexion par phase). Ce repo correspond principalement aux Phases 0, 1.2,
-2.1, 3.1 et 6 de cette roadmap.
+See `DevSecOps-IDP-Roadmap-6mois.md` (2ndBrain,
+`Active projects/IT/ROADMAP JUSTE SUIVRE/`) for the full 6-month plan
+(Phases 0-8, target stack details, per-phase thinking challenges). This
+repo mainly corresponds to Phases 0, 1.2, 2.1, 3.1 and 6 of that roadmap.
