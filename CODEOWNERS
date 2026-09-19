@@ -1,0 +1,5 @@
+# CODEOWNERS — every change on this repo requires review from the owner.
+# Solo project for now: owner reviews their own PRs deliberately (forces the
+# habit of a real review pass before merge), not a bypass.
+
+* @davidclb

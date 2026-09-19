@@ -1,0 +1,32 @@
+# OpenTofu / Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Ansible
+*.retry
+.vault_pass*
+
+# Secrets (should be SOPS-encrypted if committed at all)
+*.pem
+*.key
+!*.pub
+
+# mise (local, machine-specific shims — mise.toml itself IS tracked)
+.mise/
+
+# Editors / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/
