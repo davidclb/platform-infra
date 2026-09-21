@@ -1,3 +1,16 @@
+resource "proxmox_virtual_environment_file" "k3s_master_meta_data" {
+  content_type = "snippets"
+  datastore_id = "local"
+  node_name    = "proxmox-800g3"
+
+  source_raw {
+    file_name = "k3s-master-meta-data.yaml"
+    data      = <<-EOF
+    local-hostname: k3s-master
+    EOF
+  }
+}
+
 resource "proxmox_virtual_environment_vm" "k3s_master" {
   name      = "k3s-master"
   node_name = "proxmox-800g3"
@@ -9,7 +22,6 @@ resource "proxmox_virtual_environment_vm" "k3s_master" {
   cpu {
     cores = 2
     type  = "host"
-
   }
 
   memory {
@@ -27,6 +39,9 @@ resource "proxmox_virtual_environment_vm" "k3s_master" {
   }
 
   initialization {
+    vendor_data_file_id = proxmox_virtual_environment_file.vendor_data_agent.id
+    meta_data_file_id   = proxmox_virtual_environment_file.k3s_master_meta_data.id
+
     ip_config {
       ipv4 {
         address = "192.168.1.10/24"
@@ -41,5 +56,9 @@ resource "proxmox_virtual_environment_vm" "k3s_master" {
 
   agent {
     enabled = true
+
+    wait_for_ip {
+      disabled = true
+    }
   }
 }
