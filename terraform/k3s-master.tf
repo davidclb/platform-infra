@@ -12,8 +12,9 @@ resource "proxmox_virtual_environment_file" "k3s_master_meta_data" {
 }
 
 resource "proxmox_virtual_environment_vm" "k3s_master" {
-  name      = "k3s-master"
-  node_name = "proxmox-800g3"
+  name            = "k3s-master"
+  node_name       = "proxmox-800g3"
+  stop_on_destroy = true
 
   clone {
     vm_id = 9000
