@@ -1,0 +1,24 @@
+---
+- name: Install Docker and deploy pihole
+  hosts: pihole
+  become: true
+
+  roles:
+    - geerlingguy.docker
+
+  tasks:
+    - name: Create pihole config directory
+      ansible.builtin.file:
+        path: /etc/docker/containers/pihole
+        state: directory
+        mode: '0755'
+
+    - name: Deploy pihole docker-compose file
+      ansible.builtin.template:
+        src: templates/pihole-docker-compose.yml.j2
+        dest: /etc/docker/containers/pihole/docker-compose.yml
+
+    - name: Start pihole
+      community.docker.docker_compose_v2:
+        project_src: /etc/docker/containers/pihole
+        state: present

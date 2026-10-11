@@ -1,0 +1,24 @@
+---
+- name: Install Docker and deploy wg-easy
+  hosts: wireguard_vpn
+  become: true
+
+  roles:
+    - geerlingguy.docker
+
+  tasks:
+    - name: Create wg-easy config directory
+      ansible.builtin.file:
+        path: /etc/docker/containers/wg-easy
+        state: directory
+        mode: '0755'
+
+    - name: Deploy wg-easy docker-compose file
+      ansible.builtin.template:
+        src: templates/wg-easy-docker-compose.yml.j2
+        dest: /etc/docker/containers/wg-easy/docker-compose.yml
+
+    - name: Start wg-easy
+      community.docker.docker_compose_v2:
+        project_src: /etc/docker/containers/wg-easy
+        state: present

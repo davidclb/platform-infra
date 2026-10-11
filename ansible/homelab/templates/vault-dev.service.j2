@@ -1,0 +1,10 @@
+[Unit]
+Description=HashiCorp Vault (dev mode)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/vault server -dev -dev-listen-address=0.0.0.0:8200
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

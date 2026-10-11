@@ -1,0 +1,32 @@
+all:
+  vars:
+    ansible_user: ubuntu
+
+  children:
+    k3s_cluster:
+      children:
+        k3s_master:
+          hosts:
+            k3s-master:
+              ansible_host: 192.168.1.111
+        k3s_workers:
+          hosts:
+            k3s-worker:
+              ansible_host: 192.168.1.112
+
+    service:
+      children:
+        vault:
+          hosts:
+            vault-01:
+              ansible_host: 192.168.1.113  # not yet provisioned
+        wireguard_vpn:
+          hosts:
+            wireguard-vpn:
+              ansible_host: 192.168.1.114
+              ansible_user: root  # LXC container: provider only configures root, no ubuntu user
+        pihole:
+          hosts:
+            pihole-01:
+              ansible_host: 192.168.1.110
+              ansible_user: root  # LXC container: provider only configures root, no ubuntu user

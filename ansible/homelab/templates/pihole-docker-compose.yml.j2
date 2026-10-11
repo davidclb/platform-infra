@@ -1,0 +1,22 @@
+version: "3.8"
+
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:2026.09.0
+    hostname: pihole
+    network_mode: host
+    environment:
+      TZ: 'Europe/Paris'
+      FTLCONF_webserver_api_password: '{{ pihole_web_password }}'
+      FTLCONF_LOCAL_IPV4: {{ ansible_host }}
+      PIHOLE_DNS_: '1.1.1.1;1.0.0.1'
+      DNSMASQ_LISTENING: 'all'
+      WEBTHEME: 'default-dark'
+      FTLCONF_dhcp_ipv6: 'true'
+    volumes:
+      - './etc-pihole:/etc/pihole'
+      - './etc-dnsmasq.d:/etc/dnsmasq.d'
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped

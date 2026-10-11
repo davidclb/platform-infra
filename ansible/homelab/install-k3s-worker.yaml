@@ -1,0 +1,19 @@
+---
+- name: Install K3s agent on the worker node
+  hosts: k3s_workers
+  become: true
+
+  tasks:
+    - name: Download the K3s install script
+      ansible.builtin.get_url:
+        url: https://get.k3s.io
+        dest: /tmp/k3s-install.sh
+        mode: '0755'
+
+    - name: Run the K3s install script (agent mode)
+      ansible.builtin.command: /tmp/k3s-install.sh
+      environment:
+        K3S_URL: "https://{{ hostvars['k3s-master']['ansible_host'] }}:6443"
+        K3S_TOKEN: "{{ k3s_token }}"
+      args:
+        creates: /usr/local/bin/k3s

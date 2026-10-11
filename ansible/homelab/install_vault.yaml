@@ -1,0 +1,54 @@
+---
+- name: Install HashiCorp Vault (dev mode)
+  hosts: vault
+  become: true
+
+  tasks:
+    - name: Wait for cloud-init to finish
+      ansible.builtin.wait_for:
+        path: /var/lib/cloud/instance/boot-finished
+        timeout: 300
+
+    - name: Disable apt-daily timers to prevent lock contention
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: false
+        masked: true
+        state: stopped
+      loop:
+        - apt-daily.service
+        - apt-daily.timer
+        - apt-daily-upgrade.service
+        - apt-daily-upgrade.timer
+
+    - name: Add Vault repository with managed key
+      ansible.builtin.deb822_repository:
+        name: hashicorp
+        types: deb
+        uris: https://apt.releases.hashicorp.com
+        suites: "{{ ansible_distribution_release }}"
+        components: main
+        signed_by: https://apt.releases.hashicorp.com/gpg
+        enabled: yes
+
+    - name: Install Vault
+      ansible.builtin.apt:
+        name: vault
+        state: present
+        update_cache: true
+      register: vault_install
+      until: vault_install is succeeded
+      retries: 10
+      delay: 15
+
+    - name: Deploy Vault dev-mode systemd service
+      ansible.builtin.template:
+        src: templates/vault-dev.service.j2
+        dest: /etc/systemd/system/vault-dev.service
+
+    - name: Enable and start Vault dev service
+      ansible.builtin.systemd_service:
+        name: vault-dev
+        daemon_reload: true
+        enabled: true
+        state: started
