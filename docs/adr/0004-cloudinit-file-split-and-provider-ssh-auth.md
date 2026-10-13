@@ -66,8 +66,17 @@ needed for VM/clone operations alone:
   = true` in its `agent` block (see also the 15-minute timeout trap this
   avoids) and reference the shared `vendor_data_file_id`, rather than
   reinventing per-VM agent installation.
-- If a future Proxmox role/permission set is rebuilt from scratch, both
-  `Datastore.AllocateSpace` and `Datastore.Allocate` must be included, or
-  file-upload-based resources (snippets, ISOs uploaded via Terraform) will
-  fail with a misleading 403 that looks like a broader permissions
-  problem.
+- If a future Proxmox role/permission set is rebuilt from scratch, all
+  three of `Datastore.AllocateSpace`, `Datastore.Allocate`, and
+  `Datastore.AllocateTemplate` must be included, or file-/template-upload
+  resources (snippets, ISOs, LXC/VM templates downloaded via
+  `proxmox_download_file`) will fail with a misleading 403 that looks like
+  a broader permissions problem.
+  - `Datastore.AllocateSpace`: allocating disk space for VM/container disks.
+  - `Datastore.Allocate`: uploading arbitrary files to a datastore
+    (snippets, in ADR 0004's original case).
+  - `Datastore.AllocateTemplate`: downloading/registering a VM or LXC
+    template on a datastore via `proxmox_download_file` — discovered when
+    provisioning the `pihole`/`vpn` LXC containers (platform-infra), which
+    failed with `403 ... Datastore.AllocateTemplate` despite already
+    having the other two privileges.
