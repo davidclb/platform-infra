@@ -45,8 +45,8 @@ resource "proxmox_virtual_environment_vm" "k3s_worker" {
 
     ip_config {
       ipv4 {
-        address = "192.168.1.11/24"
-        gateway = "192.168.1.1"
+        address = "192.168.1.112/24"
+        gateway = "192.168.1.254"
       }
     }
     user_account {
