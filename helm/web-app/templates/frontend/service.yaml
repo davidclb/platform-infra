@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-svc
+  name: {{ .Values.frontend.name }}-svc
 spec:
   selector:
-    app: frontend
+    app: {{ .Values.frontend.name }}
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 80
+      port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.targetPort }}

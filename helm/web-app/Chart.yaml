@@ -1,0 +1,5 @@
+apiVersion: v2
+name: web-app
+description: Generic web app chart (Deployment + Service + Ingress) for backend/frontend pairs
+type: application
+version: 1.0.0

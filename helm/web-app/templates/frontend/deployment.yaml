@@ -1,27 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: {{ .Values.frontend.name }}
 spec:
-  replicas: 3                    # Nombre de Pods souhaités
-  revisionHistoryLimit: 5        # Nombre d'anciennes versions conservées
-  progressDeadlineSeconds: 300   # Timeout pour une mise à jour
-  minReadySeconds: 10            # Temps avant de considérer un Pod disponible
+  replicas: {{ .Values.replicaCount }}                    # Nombre de Pods souhaités
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}        # Nombre d'anciennes versions conservées
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}   # Timeout pour une mise à jour
+  minReadySeconds: {{ .Values.minReadySeconds }}            # Temps avant de considérer un Pod disponible
   strategy:
-    type: RollingUpdate          # ou Recreate
+    type: {{ .Values.strategy.type }}          # ou Recreate
     rollingUpdate:
-      maxUnavailable: 1          # Pods indisponibles max pendant update
-      maxSurge: 1                # Pods supplémentaires max pendant update
+      maxUnavailable: {{ .Values.strategy.rollingUpdate.maxUnavailable }}          # Pods indisponibles max pendant update
+      maxSurge: {{ .Values.strategy.rollingUpdate.maxSurge }}                # Pods supplémentaires max pendant update
   selector:
     matchLabels:
-      app: frontend                 # Doit correspondre aux labels du template
+      app: {{ .Values.frontend.name }}                 # Doit correspondre aux labels du template
   template:                      # Template des Pods créés
     metadata:
       labels:
-        app: frontend
+        app: {{ .Values.frontend.name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
-        - name: ghcr-pull-secret
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-      - name: ghamr-frontend
-        image: ghcr.io/davidclb/ghamr-frontend:sha-ebcf89a424ff11c130f62ddc1c649fbb20531a22
+      - name: {{ .Values.app.name }}-{{ .Values.frontend.name }}
+        image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
