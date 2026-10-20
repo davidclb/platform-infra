@@ -9,3 +9,13 @@ repos:
     hooks:
       - id: terraform_fmt
       - id: terraform_validate
+
+  # Validates .gitlab-ci.yml via GitLab's own /api/v4/ci/lint endpoint —
+  # catches syntax errors the pipeline itself could never report, since a
+  # broken .gitlab-ci.yml never gets far enough to run a job. Needs a
+  # GITLAB_TOKEN (api scope) in the environment; never hardcode it here.
+  - repo: https://github.com/bjd2385/pre-commit-gitlabci-lint
+    rev: v1.4.0
+    hooks:
+      - id: gitlabci-lint
+        args: [-p, '86658127']

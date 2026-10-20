@@ -33,3 +33,7 @@ terraform.rc
 
 # Env files
 .env
+
+# Helm package artifacts — generated on demand, never the source of truth
+*.tgz
+chart_meta.txt

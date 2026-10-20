@@ -16,6 +16,7 @@ tfsec      = "1.28.14"
 sops       = "3.13.3"
 pre-commit = "4.6.2"
 semgrep    = "1.177.0"
+direnv     = "2.37.1"
 
 # Explicit GitHub backend (mise supports it natively, no external plugin needed)
 "github:gruntwork-io/terragrunt" = "1.1.5"
