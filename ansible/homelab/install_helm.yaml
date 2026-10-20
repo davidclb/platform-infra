@@ -1,0 +1,22 @@
+---
+- name: Install Helm on the master node
+  hosts: k3s_master
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Download the Helm install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get-helm-3
+        dest: /tmp/install-helm3.sh
+        mode: '0755'
+    - name: Run the Helm install script
+      ansible.builtin.command: /tmp/install-helm3.sh
+      args:
+        creates: /usr/local/bin/helm
+    - name: Check helm version
+      ansible.builtin.command: helm version
+      register: helm_version_output
+    - name: Print Helm version 
+      ansible.builtin.debug:
+        var: helm_version_output
