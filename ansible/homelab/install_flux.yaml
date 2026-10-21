@@ -5,6 +5,26 @@
   gather_facts: true
 
   tasks:
+    - name: Wait for cloud-init to finish
+      ansible.builtin.wait_for:
+        path: /var/lib/cloud/instance/boot-finished
+        timeout: 300
+    - name: Disable apt-daily timers to prevent lock contention
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: false
+        masked: true
+        state: stopped
+      loop:
+        - apt-daily.service
+        - apt-daily.timer
+        - apt-daily-upgrade.service
+        - apt-daily-upgrade.timer
+    - name: Install Python Kubernetes library
+      ansible.builtin.apt:
+        name: python3-kubernetes
+        state: present
+        update_cache: true
     - name: Install Flux Operator
       kubernetes.core.helm:
         name: flux-operator
