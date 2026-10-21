@@ -7,7 +7,7 @@ spec:
   interval: 30m
   chart:
     spec:
-      chart: argo-chart
+      chart: argo-cd
       version: "10.10.5"
       sourceRef:
         kind: HelmRepository
