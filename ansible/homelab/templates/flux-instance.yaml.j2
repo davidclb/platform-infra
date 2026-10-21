@@ -21,7 +21,7 @@ spec:
     networkPolicy: true
   sync:
     kind: GitRepository
-    url: "git@gitlab.com:davidclb/platform-infra.git"
+    url: "ssh://git@gitlab.com:22/davidclb/platform-infra.git"
     ref: "refs/heads/main"
-    path: "clusters/my-cluster"
+    path: "flux/"
     pullSecret: "flux-system"
