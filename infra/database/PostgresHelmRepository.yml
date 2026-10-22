@@ -1,0 +1,8 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: postgres-chart
+  namespace: postgres
+spec:
+  interval: 1h
+  url: https://cloudnative-pg.github.io/charts
