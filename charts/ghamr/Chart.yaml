@@ -1,0 +1,10 @@
+apiVersion: v2
+name: ghamr
+description: Ghamr deployment — wraps the web-app chart
+type: application
+version: 1.0.0
+dependencies:
+  - name: web-app
+    version: 1.0.0
+    repository: oci://ghcr.io/davidclb/charts
+    condition: web-app.enabled      # optionnel : activable/désactivable
