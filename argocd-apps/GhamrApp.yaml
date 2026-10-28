@@ -1,0 +1,27 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ghamr-app
+  namespace: ghamr
+spec:
+  project: default
+
+  source:
+    repoURL: https://gitlab.com/davidclb/platform-infra.git
+    targetRevision: main
+    path: charts/ghamr
+    helm:
+      valueFiles:
+        - values.yaml
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ghamr
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
