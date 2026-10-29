@@ -32,7 +32,7 @@ backend:
   config:
     PORT: "8080"
     DB_PATH: "data/ghamr.db"
-    FRONTEND_URL: "http://192.168.1.111"
+    FRONTEND_URL: "https://ghamrr-lab.site"
     FREE_AI_DAILY_BUDGET_SECS: "72000"
     WEBSHARE_PROXY_HOST: "p.webshare.io"
     WEBSHARE_PROXY_PORT: "80"
