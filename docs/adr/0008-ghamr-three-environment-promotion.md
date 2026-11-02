@@ -1,7 +1,8 @@
 # ADR 0008: Ghamr as the three-environment promotion path (homelab/test → Oracle/staging → Hostinger/prod)
 
 ## Status
-Accepted
+Accepted — environment roles amended by ADR 0024 (homelab becomes
+`staging` + PR previews, Oracle carries prod only).
 
 ## Context
 The homelab K3s cluster (provisioned in ADR 0006/0007) needs a real
