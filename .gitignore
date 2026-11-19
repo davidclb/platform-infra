@@ -21,6 +21,8 @@ terraform.rc
 *.pem
 *.key
 !*.pub
+*.agekey
+age-secret.yaml
 
 # mise (local, machine-specific shims — mise.toml itself IS tracked)
 .mise/
