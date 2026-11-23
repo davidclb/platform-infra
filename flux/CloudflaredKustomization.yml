@@ -8,6 +8,8 @@ spec:
   path: ./infra/cloudflared
   prune: true
   wait: true
+  dependsOn:
+    - name: cloudflare-secrets
   sourceRef:
     kind: GitRepository
     name: flux-system
