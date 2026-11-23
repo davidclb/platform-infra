@@ -23,6 +23,10 @@ terraform.rc
 !*.pub
 *.agekey
 age-secret.yaml
+# Cleartext secret exports kept at repo root before SOPS encryption — never committed
+/cloudflared-token.yaml
+/ghcr-helm-repo
+/ghcr-pull.json
 
 # mise (local, machine-specific shims — mise.toml itself IS tracked)
 .mise/
