@@ -27,5 +27,13 @@ spec:
       containers:
       - name: {{ .Values.app.name }}-{{ .Values.backend.name }}
         image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+        ports:
+          - name: http
+            containerPort: {{ .Values.backend.service.targetPort }}
+          {{- with .Values.backend.service.metricsPort }}
+          # The Service's metrics port targets this name.
+          - name: metrics
+            containerPort: {{ . }}
+          {{- end }}
         envFrom:
           {{- toYaml .Values.backend.envFrom | nindent 10 }}

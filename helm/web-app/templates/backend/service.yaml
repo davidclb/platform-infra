@@ -2,10 +2,28 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Values.backend.name }}-svc
+  # A ServiceMonitor selects Services by these labels (not by the selector
+  # below, which picks the Pods). app.kubernetes.io/part-of is one of the
+  # Kubernetes recommended labels: it lets one selector take every Service
+  # of an app.
+  labels:
+    app: {{ .Values.backend.name }}
+    app.kubernetes.io/part-of: {{ .Values.app.name }}
 spec:
   selector:
     app: {{ .Values.backend.name }}
   ports:
-    - protocol: TCP
+    # Named, so a ServiceMonitor (or anything else) can point at a port by
+    # name rather than by a number that may change.
+    - name: http
+      protocol: TCP
       port: {{ .Values.backend.service.port }}
       targetPort: {{ .Values.backend.service.targetPort }}
+    {{- with .Values.backend.service.metricsPort }}
+    # /metrics, on its own listener (Ghamr: METRICS_ADDR, default :9464).
+    # Cluster-internal: the Ingress only routes to the http port.
+    - name: metrics
+      protocol: TCP
+      port: {{ . }}
+      targetPort: metrics
+    {{- end }}

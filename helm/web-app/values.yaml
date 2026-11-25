@@ -24,6 +24,9 @@ backend:
   service:
     port: 80
     targetPort: 8080
+    # The port /metrics answers on, inside the Pod. Leave it out for an app
+    # without metrics: no metrics port is declared then.
+    metricsPort: 9464
   envFrom:
     - configMapRef:
         name: backend-config
