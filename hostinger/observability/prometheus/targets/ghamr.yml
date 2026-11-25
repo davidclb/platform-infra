@@ -1,0 +1,7 @@
+# Ghamr's API: /metrics on its own port (METRICS_ADDR, default :9464),
+# reached over the `observability` network by container name. The reverse
+# proxy only forwards to the API's port, so this one isn't on the internet.
+- targets: ["ghamr_backend:9464"]
+  labels:
+    app: ghamr
+    env: prod

@@ -1,0 +1,16 @@
+# platform-infra pipeline.
+#
+# stages: test runs the config/rules checks; deploy ships the stack to the
+# VPS (the deploy job is added once the deploy key is wired up).
+#
+# Per-component checks live next to the code they validate and are pulled in
+# with include (Rule #0, guardrail 3: no config merged without a machine
+# checking it).
+
+stages:
+  - test
+  - deploy
+
+include:
+  - local: hostinger/observability/ci.yml
+  - local: terraform/ci.yml

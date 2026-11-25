@@ -1,0 +1,66 @@
+# The Hostinger observability stack (ADR 0026): Prometheus and Alertmanager.
+# Grafana, node-exporter and cAdvisor join it in a later change.
+#
+# Runs as its own compose project in ~/infra/observability, owned by no app.
+# Nothing is published publicly: both UIs bind to 127.0.0.1 and are reached
+# through the SSH tunnels (hostinger-prometheus, hostinger-grafana).
+
+name: observability
+
+services:
+  prometheus:
+    # Version and digest: a tag can be moved, a digest can't (ADR 0026, 6).
+    image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Bounded disk on a shared VPS (ADR 0026, 6): whichever comes first.
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=5GB
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks: [observability]
+    restart: unless-stopped
+    # The image runs as nobody already; nothing to write but its data volume.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+  alertmanager:
+    image: prom/alertmanager:v0.33.1@sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+      - alertmanager_data:/alertmanager
+    # Mounted at /run/secrets/<name>, read by alertmanager.yml's *_file
+    # fields. The files are decrypted from SOPS at deploy time (README).
+    secrets: [telegram_bot_token, telegram_chat_id]
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks: [observability]
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+
+secrets:
+  telegram_bot_token:
+    file: ./secrets/telegram_bot_token
+  telegram_chat_id:
+    file: ./secrets/telegram_chat_id
+
+volumes:
+  prometheus_data:
+  alertmanager_data:
+
+networks:
+  # Created once on the host (docker network create observability); each
+  # app's compose joins it as external too. Only what Prometheus scrapes
+  # sits on it.
+  observability:
+    external: true
