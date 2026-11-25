@@ -1,0 +1,23 @@
+# Lint of the Helm charts (Rule #0, guardrail 3).
+#
+# helm lint only for now: it checks chart structure and templating. Policy
+# checks on the rendered manifests (conftest/Kyverno — no :latest, resources
+# set, etc.) are a later layer and need Rego policies written first.
+#
+# Pulled into the pipeline with:
+#   include:
+#     - local: charts/ci.yml
+
+charts:helm-lint:
+  stage: test
+  # Official-ish Helm image (alpine/helm tags without the leading v).
+  # Helm 4 is recent — verify alpine/helm:4.3.2 exists on the first run.
+  image:
+    name: alpine/helm:4.3.2
+    entrypoint: [""]
+  rules:
+    - changes: [charts/**/*]
+  script:
+    # Lint each chart. --strict turns warnings into failures.
+    - helm lint charts/ghamr --strict
+    - helm lint charts/yoshu --strict
