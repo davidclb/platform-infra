@@ -19,7 +19,7 @@ Grafana, node-exporter and cAdvisor come in a later change.
 
 ```sh
 P=prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
-A=prom/alertmanager:v0.35.1@sha256:4e3d029e69c7f61dd53a2b31a3dc427a2b81736cffca185c0854075e07969e36
+A=prom/alertmanager:v0.33.1@sha256:9e082985f56f4c8c9f724e18f2288c6708f472e56a5286b8863d080434ea065d
 docker run --rm --entrypoint promtool -v "$PWD/prometheus:/p:ro" "$P" check config /p/prometheus.yml
 docker run --rm --entrypoint promtool -v "$PWD/prometheus:/p:ro" -w /p/tests "$P" test rules rules.test.yml
 docker run --rm --entrypoint amtool -v "$PWD/alertmanager:/a:ro" "$A" check-config /a/alertmanager.yml
