@@ -1,0 +1,199 @@
+# Ghamr's recording and alerting rules.
+#
+# Guides followed (official):
+#   - Alerting practices: "keep alerting simple, alert on symptoms … and
+#     avoid having pages where there is nothing to do."
+#     https://prometheus.io/docs/practices/alerting/
+#   - Recording rule names: level:metric:operations.
+#     https://prometheus.io/docs/practices/rules/
+#   - Rule fields (for, labels, annotations):
+#     https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+#
+# Two severities, routed apart by Alertmanager:
+#   page    someone acts now: users are hurt, or money is (the guide: "if some
+#           failures are not user-visible, but … you are losing a lot of
+#           money, add pages"). Telegram with sound.
+#   ticket  look at it today. Telegram, silent.
+#
+# Ghamr has about twenty users. Most rules carry a minimum volume as well as
+# a ratio: one failed request out of two isn't an outage.
+#
+# Latency isn't alerted on yet: the SLO comes from a few weeks of
+# measurements (ADR 0027 amendment, "measure first").
+
+groups:
+  - name: ghamr.recording
+    rules:
+      # Request rate, health probes left out: Docker's /healthz every few
+      # seconds would make up most of the traffic and dilute the error ratio.
+      - record: app:http_server_requests:rate5m
+        expr: |
+          sum by (app) (
+            rate(http_server_request_duration_seconds_count{app="ghamr", http_route!~"/healthz|/readyz"}[5m])
+          )
+      - record: app:http_server_requests_5xx:rate5m
+        expr: |
+          sum by (app) (
+            rate(http_server_request_duration_seconds_count{app="ghamr", http_route!~"/healthz|/readyz", http_response_status_code=~"5.."}[5m])
+          )
+
+  - name: ghamr.alerts
+    rules:
+      # ── Users hurt ────────────────────────────────────────────────────
+      - alert: GhamrHighErrorRate
+        # More than 5 % of requests answered 5xx, and at least 3 of them in
+        # the last 5 minutes (rate × 300 s), for 10 minutes straight.
+        expr: |
+          (
+            app:http_server_requests_5xx:rate5m{app="ghamr"}
+              / app:http_server_requests:rate5m{app="ghamr"} > 0.05
+          )
+          and app:http_server_requests_5xx:rate5m{app="ghamr"} * 300 >= 3
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "Ghamr answers 5xx to {{ $value | humanizePercentage }} of requests"
+          description: >-
+            Over 5 % of the API's requests fail with a 5xx for 10 minutes.
+            Grafana: the RED dashboard, split by http_route; Loki:
+            {app="ghamr"} | json | level="ERROR".
+
+      - alert: GhamrNotScraped
+        # No `up` series at all: the target file is missing, or Prometheus
+        # can't resolve ghamr_backend (Ghamr left the observability network).
+        # AppDown (stack.rules.yml) covers "scraped but not answering".
+        expr: absent(up{app="ghamr"})
+        for: 10m
+        labels:
+          severity: ticket
+          app: ghamr
+        annotations:
+          summary: "Prometheus has no target for Ghamr"
+          description: >-
+            Check targets/ghamr.yml and that ghamr_backend is on the
+            `observability` network (docker network inspect observability).
+
+      # ── Money ─────────────────────────────────────────────────────────
+      - alert: GhamrStripeEventFailed
+        # A Stripe event the webhook failed to apply: a payment taken and a
+        # plan not updated. The webhook still answers 200, so Stripe won't
+        # retry it: someone has to.
+        #
+        # The second half catches the first error ever seen for a type: the
+        # series is created at 1, and increase() needs two samples, so it
+        # reads 0. "x unless x offset 30m" is "the series is new".
+        expr: |
+          sum by (app, type) (increase(ghamr_stripe_events_total{app="ghamr", outcome="error"}[30m])) > 0
+          or
+          sum by (app, type) (
+            ghamr_stripe_events_total{app="ghamr", outcome="error"}
+              unless ghamr_stripe_events_total{app="ghamr", outcome="error"} offset 30m
+          )
+        labels:
+          severity: page
+        annotations:
+          summary: "Stripe {{ $labels.type }} event failed to apply"
+          description: >-
+            The webhook got the event but couldn't update the subscription.
+            Find it in Loki ({app="ghamr"} |= "stripe" | json | level="ERROR"),
+            fix the cause, then resend it from the Stripe dashboard (Events).
+
+      # ── Security ──────────────────────────────────────────────────────
+      - alert: GhamrLoginFailuresSpike
+        # More than 30 failed password logins in 10 minutes, for twenty users.
+        # The per-IP rate limiter stops one address; this is what catches
+        # many addresses (credential stuffing) or a forgotten script.
+        expr: |
+          sum by (app) (
+            increase(ghamr_auth_logins_total{app="ghamr", outcome=~"bad_password|unknown_email"}[10m])
+          ) > 30
+        labels:
+          severity: page
+          category: security
+        annotations:
+          summary: "{{ $value | humanize }} failed logins on Ghamr in 10 minutes"
+          description: >-
+            unknown_email dominating = credential stuffing (addresses from a
+            leak); bad_password on one account = targeted guessing. Loki:
+            {app="ghamr"} |= "Failed login attempt" | json, by ip.
+
+      # ── Dependencies (causes, so tickets: a page comes from the 5xx) ──
+      - alert: GhamrAIProviderRateLimited
+        expr: |
+          sum by (app, gen_ai_provider_name) (
+            increase(gen_ai_client_operation_duration_seconds_count{app="ghamr", error_type="rate_limit"}[15m])
+          ) >= 5
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $labels.gen_ai_provider_name }} rate-limits Ghamr ({{ $value | humanize }} in 15 min)"
+          description: >-
+            The provider answers 429. Transcriptions fall back (Groq → OpenAI,
+            which costs more) or fail. Check the plan's limits.
+
+      - alert: GhamrAIProviderFailing
+        # Half the calls to one provider fail, over at least 3 calls.
+        expr: |
+          (
+            sum by (app, gen_ai_provider_name) (increase(gen_ai_client_operation_duration_seconds_count{app="ghamr", error_type!=""}[15m]))
+              / sum by (app, gen_ai_provider_name) (increase(gen_ai_client_operation_duration_seconds_count{app="ghamr"}[15m]))
+            > 0.5
+          )
+          and sum by (app, gen_ai_provider_name) (increase(gen_ai_client_operation_duration_seconds_count{app="ghamr"}[15m])) >= 3
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $labels.gen_ai_provider_name }}: {{ $value | humanizePercentage }} of calls fail"
+          description: >-
+            Split by error_type (rate_limit, timeout, server_error,
+            client_error) on gen_ai_client_operation_duration_seconds_count.
+
+      - alert: GhamrYtDlpBotBlocked
+        # YouTube blocks more than half of yt-dlp's attempts: subtitles and
+        # audio for YouTube videos stop working. The fix is on the proxies.
+        expr: |
+          (
+            sum by (app) (increase(ghamr_ytdlp_runs_total{app="ghamr", outcome="bot_block"}[30m]))
+              / sum by (app) (increase(ghamr_ytdlp_runs_total{app="ghamr"}[30m]))
+            > 0.5
+          )
+          and sum by (app) (increase(ghamr_ytdlp_runs_total{app="ghamr"}[30m])) >= 5
+        labels:
+          severity: ticket
+        annotations:
+          summary: "YouTube blocks {{ $value | humanizePercentage }} of yt-dlp runs"
+          description: >-
+            Bot blocks per proxy session: the admin dashboard's YouTube stats.
+            Rotate the proxy pool or update yt-dlp.
+
+      # ── Capacity ──────────────────────────────────────────────────────
+      - alert: GhamrRealtimeFallbacks
+        # Viewers moved from realtime to chunks for lack of a slot: ours
+        # (SPEECHMATICS_RT_MAX) or Speechmatics' account limit.
+        expr: |
+          sum by (app, reason) (
+            increase(ghamr_realtime_fallbacks_total{app="ghamr", reason=~"capacity|provider_limit"}[1h])
+          ) >= 3
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $value | humanize }} realtime sessions refused in an hour ({{ $labels.reason }})"
+          description: >-
+            capacity: raise SPEECHMATICS_RT_MAX. provider_limit: the
+            Speechmatics plan's concurrency. Saturation:
+            ghamr_realtime_sessions_active / ghamr_realtime_sessions_limit.
+
+      - alert: GhamrUploadJobsFailing
+        expr: |
+          sum by (app) (
+            increase(ghamr_upload_job_duration_seconds_count{app="ghamr", status="error"}[1h])
+          ) >= 3
+        labels:
+          severity: ticket
+        annotations:
+          summary: "{{ $value | humanize }} file transcriptions failed in an hour"
+          description: >-
+            Loki: {app="ghamr"} |= "Upload job ended" | json | status="error",
+            then that request_id for the whole story.

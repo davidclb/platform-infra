@@ -1,0 +1,160 @@
+# Unit tests of the alerting rules: promtool test rules tests/rules.test.yml
+# https://prometheus.io/docs/prometheus/latest/configuration/unit_testing_rules/
+#
+# Each alert that matters is tested both ways: it fires when it should, and
+# stays quiet on the case it was written not to page on.
+# Series notation: "a+bxN" = start at a, add b per interval, N times;
+# "_" = no sample.
+
+rule_files:
+  - ../rules/ghamr.rules.yml
+  - ../rules/stack.rules.yml
+
+evaluation_interval: 30s
+
+tests:
+  # 5xx: 10 a minute out of 70, health probes flooding the denominator.
+  # Without the probe filter the ratio would be 10/670 = 1.5 %: no alert.
+  - name: error rate pages, health probes left out
+    interval: 1m
+    input_series:
+      - series: 'http_server_request_duration_seconds_count{app="ghamr",http_route="/api/v1/subtitles",http_response_status_code="200"}'
+        values: '0+60x30'
+      - series: 'http_server_request_duration_seconds_count{app="ghamr",http_route="/api/v1/subtitles",http_response_status_code="500"}'
+        values: '0+10x30'
+      - series: 'http_server_request_duration_seconds_count{app="ghamr",http_route="/healthz",http_response_status_code="200"}'
+        values: '0+600x30'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: GhamrHighErrorRate
+        exp_alerts: [] # true for 5 minutes only: `for: 10m` not reached
+      - eval_time: 20m
+        alertname: GhamrHighErrorRate
+        exp_alerts:
+          - exp_labels: {app: ghamr, severity: page}
+            exp_annotations:
+              summary: "Ghamr answers 5xx to 14.29% of requests"
+              description: "Over 5 % of the API's requests fail with a 5xx for 10 minutes. Grafana: the RED dashboard, split by http_route; Loki: {app=\"ghamr\"} | json | level=\"ERROR\"."
+
+  # A third of requests fail, but that's 2.5 errors per 5 minutes:
+  # under the minimum volume, no page.
+  - name: error rate quiet at low volume
+    interval: 1m
+    input_series:
+      - series: 'http_server_request_duration_seconds_count{app="ghamr",http_route="/api/v1/vocab",http_response_status_code="200"}'
+        values: '0+1x30'
+      - series: 'http_server_request_duration_seconds_count{app="ghamr",http_route="/api/v1/vocab",http_response_status_code="500"}'
+        values: '0+0.5x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: GhamrHighErrorRate
+        exp_alerts: []
+
+  # The first Stripe error ever: the series appears at 1.
+  - name: stripe, first error of a type
+    interval: 1m
+    input_series:
+      - series: 'ghamr_stripe_events_total{app="ghamr",outcome="error",type="invoice.paid"}'
+        values: '_x30 1x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: GhamrStripeEventFailed
+        exp_alerts:
+          - exp_labels: {app: ghamr, type: invoice.paid, severity: page}
+            exp_annotations:
+              summary: "Stripe invoice.paid event failed to apply"
+              description: "The webhook got the event but couldn't update the subscription. Find it in Loki ({app=\"ghamr\"} |= \"stripe\" | json | level=\"ERROR\"), fix the cause, then resend it from the Stripe dashboard (Events)."
+      - eval_time: 70m # 40 minutes on, nothing new: resolved
+        alertname: GhamrStripeEventFailed
+        exp_alerts: []
+
+  # A later error on a series that already exists.
+  - name: stripe, another error
+    interval: 1m
+    input_series:
+      - series: 'ghamr_stripe_events_total{app="ghamr",outcome="error",type="checkout.session.completed"}'
+        values: '1x40 2x30'
+    alert_rule_test:
+      - eval_time: 38m
+        alertname: GhamrStripeEventFailed
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: GhamrStripeEventFailed
+        exp_alerts:
+          - exp_labels: {app: ghamr, type: checkout.session.completed, severity: page}
+            exp_annotations:
+              summary: "Stripe checkout.session.completed event failed to apply"
+              description: "The webhook got the event but couldn't update the subscription. Find it in Loki ({app=\"ghamr\"} |= \"stripe\" | json | level=\"ERROR\"), fix the cause, then resend it from the Stripe dashboard (Events)."
+
+  - name: login failures spike
+    interval: 1m
+    input_series:
+      - series: 'ghamr_auth_logins_total{app="ghamr",outcome="unknown_email"}'
+        values: '0+5x20'
+      - series: 'ghamr_auth_logins_total{app="ghamr",outcome="ok"}'
+        values: '0+50x20' # successes don't count
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GhamrLoginFailuresSpike
+        exp_alerts:
+          - exp_labels: {app: ghamr, severity: page, category: security}
+            exp_annotations:
+              summary: "50 failed logins on Ghamr in 10 minutes"
+              description: "unknown_email dominating = credential stuffing (addresses from a leak); bad_password on one account = targeted guessing. Loki: {app=\"ghamr\"} |= \"Failed login attempt\" | json, by ip."
+
+  - name: login failures, a normal day
+    interval: 1m
+    input_series:
+      - series: 'ghamr_auth_logins_total{app="ghamr",outcome="bad_password"}'
+        values: '0+1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GhamrLoginFailuresSpike
+        exp_alerts: []
+
+  - name: yt-dlp blocked by YouTube
+    interval: 1m
+    input_series:
+      - series: 'ghamr_ytdlp_runs_total{app="ghamr",operation="audio",outcome="bot_block"}'
+        values: '0+1x40'
+      - series: 'ghamr_ytdlp_runs_total{app="ghamr",operation="audio",outcome="ok"}'
+        values: '0+0.25x40'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: GhamrYtDlpBotBlocked
+        exp_alerts:
+          - exp_labels: {app: ghamr, severity: ticket}
+            exp_annotations:
+              summary: "YouTube blocks 80% of yt-dlp runs"
+              description: "Bot blocks per proxy session: the admin dashboard's YouTube stats. Rotate the proxy pool or update yt-dlp."
+
+  - name: an app stops answering
+    interval: 1m
+    input_series:
+      - series: 'up{job="apps",app="ghamr",env="prod",instance="ghamr_backend:9464"}'
+        values: '1x5 0x10'
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: AppDown
+        exp_alerts: [] # down for 1 minute: `for: 2m` not reached
+      - eval_time: 10m
+        alertname: AppDown
+        exp_alerts:
+          - exp_labels: {job: apps, app: ghamr, env: prod, instance: "ghamr_backend:9464", severity: page}
+            exp_annotations:
+              summary: "ghamr doesn't answer Prometheus"
+              description: "ghamr_backend:9464 has failed its scrapes for 2 minutes. docker ps / docker logs on the VPS."
+
+  - name: no target for Ghamr at all
+    interval: 1m
+    input_series:
+      - series: 'up{job="prometheus",instance="localhost:9090"}'
+        values: '1x20'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GhamrNotScraped
+        exp_alerts:
+          - exp_labels: {app: ghamr, severity: ticket}
+            exp_annotations:
+              summary: "Prometheus has no target for Ghamr"
+              description: "Check targets/ghamr.yml and that ghamr_backend is on the `observability` network (docker network inspect observability)."

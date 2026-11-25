@@ -1,0 +1,52 @@
+# Rules for every app and for the stack itself.
+#
+# Who watches the watchers: these say when an app stops answering its
+# scrapes, or when Prometheus or Alertmanager themselves fail. They can't
+# say that the whole stack is down (nothing would be left to send the
+# alert): that needs a dead man's switch outside the VPS — a follow-up.
+
+groups:
+  - name: stack.alerts
+    rules:
+      - alert: AppDown
+        # An app's /metrics doesn't answer: the app is down, or its metrics
+        # endpoint is. Alertmanager mutes the app's other alerts meanwhile
+        # (inhibit_rules): they'd be noise around this one.
+        expr: up{job="apps"} == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: "{{ $labels.app }} doesn't answer Prometheus"
+          description: >-
+            {{ $labels.instance }} has failed its scrapes for 2 minutes.
+            docker ps / docker logs on the VPS.
+
+      - alert: PrometheusRuleEvaluationFailures
+        # A rule that fails to evaluate is an alert that can never fire.
+        expr: increase(prometheus_rule_evaluation_failures_total[10m]) > 0
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Prometheus fails to evaluate rule group {{ $labels.rule_group }}"
+          description: "See Prometheus's logs and /rules."
+
+      - alert: PrometheusNotificationsFailing
+        # Prometheus can't hand alerts to Alertmanager. This alert travels
+        # the same road, so it only arrives once that road is back: the
+        # dead man's switch is the real answer.
+        expr: rate(prometheus_notifications_errors_total[5m]) > 0
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Prometheus can't reach Alertmanager"
+
+      - alert: AlertmanagerNotificationsFailing
+        # Alertmanager can't deliver to Telegram (bad token, chat_id, Telegram
+        # down). Same caveat as above.
+        expr: increase(alertmanager_notifications_failed_total[15m]) > 0
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Alertmanager fails to send to {{ $labels.integration }}"

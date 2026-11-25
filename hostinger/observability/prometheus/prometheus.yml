@@ -1,0 +1,37 @@
+# Prometheus for the Hostinger VPS (tier 3) — ADR 0026.
+#
+# One Prometheus for every app on the host. An app opts in with a /metrics
+# endpoint, the external Docker network `observability`, and one file in
+# targets/ (file_sd: the target list stays a reviewed file in git, no
+# Docker socket — ADR 0026, decision 3).
+
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+# Relative paths are resolved against this file: the same config validates
+# in CI and runs in the container.
+rule_files:
+  - rules/*.rules.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # Watch the watchers: Prometheus and Alertmanager themselves
+  # (stack.rules.yml alerts on their failures).
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+  - job_name: alertmanager
+    static_configs:
+      - targets: ["alertmanager:9093"]
+
+  # The apps: one file per app in targets/, each target labelled with its
+  # `app`. Adding an app touches no line here.
+  - job_name: apps
+    file_sd_configs:
+      - files: ["targets/*.yml"]
+        refresh_interval: 1m

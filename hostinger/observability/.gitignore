@@ -1,0 +1,2 @@
+# The decrypted Telegram secrets, written on the host at deploy time.
+secrets/

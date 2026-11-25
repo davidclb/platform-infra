@@ -1,0 +1,41 @@
+# Alertmanager for the Hostinger VPS: routes the alerts of every app to
+# Telegram. https://prometheus.io/docs/alerting/latest/configuration/
+#
+# The bot token and the chat ID are read from files, never written here:
+# both are decrypted from SOPS onto the host at deploy time and mounted
+# read-only (compose.yaml, README.md).
+
+route:
+  receiver: telegram-page
+  # One message per app and alert name, not one per series.
+  group_by: [app, alertname]
+  # The documented defaults, written out so they can be explained.
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="ticket"]
+      receiver: telegram-ticket
+      # A ticket doesn't need repeating every 4 hours.
+      repeat_interval: 24h
+
+receivers:
+  - name: telegram-page
+    telegram_configs:
+      - bot_token_file: /run/secrets/telegram_bot_token
+        chat_id_file: /run/secrets/telegram_chat_id
+        send_resolved: true
+  - name: telegram-ticket
+    telegram_configs:
+      - bot_token_file: /run/secrets/telegram_bot_token
+        chat_id_file: /run/secrets/telegram_chat_id
+        send_resolved: true
+        # Delivered silently: read it today, not now.
+        disable_notifications: true
+
+inhibit_rules:
+  # An app that's down makes its other alerts noise: mute them while
+  # AppDown fires for that app.
+  - source_matchers: [alertname="AppDown"]
+    target_matchers: [alertname!="AppDown"]
+    equal: [app]

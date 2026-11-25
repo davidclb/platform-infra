@@ -1,0 +1,34 @@
+# CI checks for the observability stack (Rule #0, guardrail 3: no config
+# merged without a machine checking it). Pulled into the pipeline with:
+#
+#   include:
+#     - local: hostinger/observability/ci.yml
+#
+# Same pinned images as compose.yaml, so CI checks with the very versions
+# that run.
+
+observability:prometheus:
+  stage: test
+  image:
+    name: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+    entrypoint: [""]
+  rules:
+    - changes: [hostinger/observability/**/*]
+  script:
+    - cd hostinger/observability/prometheus
+    # Syntax of the config and of every rule file it loads.
+    - promtool check config prometheus.yml
+    # Every rule file's PromQL, then the unit tests: each alert fires when it
+    # should and stays quiet when it shouldn't.
+    - promtool check rules rules/*.rules.yml
+    - cd tests && promtool test rules rules.test.yml
+
+observability:alertmanager:
+  stage: test
+  image:
+    name: prom/alertmanager:v0.35.1@sha256:4e3d029e69c7f61dd53a2b31a3dc427a2b81736cffca185c0854075e07969e36
+    entrypoint: [""]
+  rules:
+    - changes: [hostinger/observability/**/*]
+  script:
+    - amtool check-config hostinger/observability/alertmanager/alertmanager.yml
