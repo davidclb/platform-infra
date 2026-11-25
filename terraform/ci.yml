@@ -1,0 +1,69 @@
+# Validation + security scan of the OpenTofu code (Rule #0, guardrail 3:
+# no config merged without a machine checking it).
+#
+# These jobs are STATIC: no state, no backend, no Proxmox credentials.
+# They validate the code, not the live infra. `tofu plan` / `apply` come
+# later, once the state lives on a remote backend (roadmap Phase 3.1) — a
+# CI runner has no access to the local tfstate, so plan/apply cannot run
+# until the state is shared.
+#
+# Pulled into the pipeline with:
+#   include:
+#     - local: terraform/ci.yml
+
+terraform:fmt:
+  stage: test
+  image:
+    name: ghcr.io/opentofu/opentofu:1.13.10
+    entrypoint: [""]
+  rules:
+    - changes: [terraform/**/*]
+  script:
+    - cd terraform
+    # -check fails if anything is not canonically formatted; -diff shows what.
+    - tofu fmt -check -recursive -diff
+
+terraform:validate:
+  stage: test
+  image:
+    name: ghcr.io/opentofu/opentofu:1.13.10
+    entrypoint: [""]
+  rules:
+    - changes: [terraform/**/*]
+  script:
+    - cd terraform
+    # -backend=false: validate the config alone, without a state backend or
+    # any credentials. Catches bad references, wrong types, unknown args.
+    - tofu init -backend=false
+    - tofu validate
+
+terraform:trivy:
+  stage: test
+  # Trivy, not tfsec (tfsec is now folded into Trivy). Pulled from ghcr, not
+  # Docker Hub: Trivy's Docker Hub tags were supply-chain compromised in
+  # 2026 (stolen CI secrets) — hence a trusted registry, and a digest pin
+  # still to add (TODO below).
+  image:
+    # TODO: pin by digest (Trivy Docker Hub supply-chain compromise 2026):
+    #   docker pull ghcr.io/aquasecurity/trivy:0.76.2 && docker inspect \
+    #     --format='{{index .RepoDigests 0}}' ghcr.io/aquasecurity/trivy:0.76.2
+    name: ghcr.io/aquasecurity/trivy:0.76.2
+    entrypoint: [""]
+  rules:
+    - changes: [terraform/**/*]
+  script:
+    # config mode = IaC misconfiguration scan (the tfsec replacement).
+    # Exit 1 on findings so the job fails; severity trimmed to real issues.
+    - trivy config terraform/ --severity MEDIUM,HIGH,CRITICAL --exit-code 1
+
+terraform:checkov:
+  stage: test
+  image:
+    name: bridgecrew/checkov:3.4.11
+    entrypoint: [""]
+  rules:
+    - changes: [terraform/**/*]
+  script:
+    # Second opinion on the Terraform (Checkov catches different things than
+    # tfsec). -d scans the directory; --quiet trims passed checks from output.
+    - checkov -d terraform/ --quiet --compact

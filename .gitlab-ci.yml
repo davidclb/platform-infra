@@ -13,3 +13,4 @@ stages:
 
 include:
   - local: hostinger/observability/ci.yml
+  - local: terraform/ci.yml
