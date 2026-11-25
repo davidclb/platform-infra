@@ -18,6 +18,14 @@ charts:helm-lint:
   rules:
     - changes: [charts/**/*]
   script:
-    # Lint each chart. --strict turns warnings into failures.
-    - helm lint charts/ghamr --strict
-    - helm lint charts/yoshu --strict
+    # Lint each chart. --strict turns warnings into failures. Tee the output
+    # to a file (downloadable artifact) while keeping it in the job log. set
+    # -o pipefail so a lint failure still fails the job through the tee.
+    - set -o pipefail
+    - helm lint charts/ghamr charts/yoshu --strict | tee helm-lint.txt
+  artifacts:
+    # when: always so the report is there even when the lint fails.
+    when: always
+    paths:
+      - helm-lint.txt
+    expire_in: 1 week

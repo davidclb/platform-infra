@@ -23,4 +23,13 @@ ansible:lint:
     - cd ansible
     # Lint every playbook. ansible-lint discovers them, applies the default
     # ruleset (plus .ansible-lint if present), and fails on violations.
-    - ansible-lint
+    # -f codeclimate writes the CodeClimate JSON GitLab renders in the MR.
+    # Write it to a file; ansible-lint's exit code (non-zero on findings)
+    # propagates normally so the job still fails.
+    - ansible-lint -f codeclimate > gl-codequality.json
+  artifacts:
+    # when: always so the report is uploaded even when the lint fails (which
+    # is exactly when you want to read it).
+    when: always
+    reports:
+      codequality: ansible/gl-codequality.json
