@@ -27,13 +27,19 @@ ansible:lint:
     - ansible-galaxy collection install -r homelab/requirements.yml
     # Lint every playbook. ansible-lint discovers them, applies the default
     # ruleset (plus .ansible-lint if present), and fails on violations.
-    # -f codeclimate writes the CodeClimate JSON GitLab renders in the MR.
-    # Write it to a file; ansible-lint's exit code (non-zero on findings)
-    # propagates normally so the job still fails.
-    - ansible-lint -f codeclimate > gl-codequality.json
+    # Run the default formatter first so the DETAILED violations land in the
+    # job log and the artifact (the codeclimate format only prints a summary);
+    # keep its exit code as the job's exit code. Then write the CodeClimate
+    # JSON GitLab renders in the MR (generated even on failure).
+    - ansible-lint > ansible-lint.txt 2>&1; LINT_EXIT=$?
+    - cat ansible-lint.txt
+    - ansible-lint -f codeclimate > gl-codequality.json || true
+    - exit $LINT_EXIT
   artifacts:
     # when: always so the report is uploaded even when the lint fails (which
     # is exactly when you want to read it).
     when: always
+    paths:
+      - ansible/ansible-lint.txt
     reports:
       codequality: ansible/gl-codequality.json
