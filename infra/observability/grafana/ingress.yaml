@@ -1,0 +1,23 @@
+# Grafana exposed publicly through the existing cloudflared tunnel
+# (ADR 0021, ADR 0029): grafana.ghamrr-lab.site -> cloudflared -> Traefik
+# -> this Ingress -> the Grafana Service. Protected by Cloudflare Access
+# (OTP email) on the dashboard side; the Grafana login stays as a second
+# factor. Grafana itself stays ClusterIP — nothing is exposed on the LAN.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: observability
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: grafana.ghamrr-lab.site
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80
