@@ -29,7 +29,7 @@
         suites: "{{ ansible_distribution_release }}"
         components: main
         signed_by: https://apt.releases.hashicorp.com/gpg
-        enabled: yes
+        enabled: true
 
     - name: Install Vault
       ansible.builtin.apt:
@@ -45,6 +45,7 @@
       ansible.builtin.template:
         src: templates/vault-dev.service.j2
         dest: /etc/systemd/system/vault-dev.service
+        mode: "0644"   # explicit permissions: systemd units are world-readable
 
     - name: Enable and start Vault dev service
       ansible.builtin.systemd_service:
