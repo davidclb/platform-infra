@@ -44,6 +44,21 @@ spec:
     grafana:
       service:
         type: ClusterIP
+      # Dashboards as code (ADR 0028): the sidecar loads every ConfigMap
+      # labelled grafana_dashboard=1 from the observability namespace and
+      # imports each *.json key under data. allowUiUpdates=false makes
+      # provisioned dashboards read-only in the UI — Git is the source of
+      # truth. Values pinned explicitly (they are chart defaults) so the
+      # mechanism is visible and defensible in review.
+      sidecar:
+        dashboards:
+          enabled: true
+          label: grafana_dashboard
+          labelValue: "1"
+          searchNamespace: observability
+          provider:
+            allowUiUpdates: false
+            disableDelete: false
     # no notif route for now but active 
     alertmanager:
       enabled: true

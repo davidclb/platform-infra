@@ -1,0 +1,40 @@
+# Grafana dashboard provisioned as code (ADR 0028).
+#
+# The Grafana sidecar shipped by kube-prometheus-stack loads every ConfigMap
+# labelled grafana_dashboard=1 in the observability namespace and imports
+# each *.json key under data as a dashboard (allowUiUpdates=false: read-only
+# in the UI, Git is the source of truth).
+#
+# The JSON below is a PLACEHOLDER shell: the real panels (USE method —
+# node CPU/memory/disk, pod failures, requests vs limits) are written by
+# hand by the repo owner. Replace the panels array, keep uid stable.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-cluster-overview
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+data:
+  cluster-overview.json: |
+    {
+      "schemaVersion": 41,
+      "uid": "homelab-cluster-overview",
+      "title": "Homelab — cluster overview (USE) [placeholder]",
+      "tags": ["homelab", "kubernetes", "use"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "stat",
+          "title": "Nodes (placeholder — owner writes the real USE panels)",
+          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+          "targets": [
+            { "expr": "count(kube_node_info)", "refId": "A" }
+          ]
+        }
+      ],
+      "templating": { "list": [] }
+    }

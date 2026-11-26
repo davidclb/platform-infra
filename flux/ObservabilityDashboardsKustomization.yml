@@ -1,0 +1,15 @@
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: observability-dashboards
+  namespace: flux-system
+spec:
+  interval: 30m0s
+  path: ./infra/observability/dashboards
+  prune: true            # removing a file from Git removes the dashboard from Grafana
+  dependsOn:
+    - name: observability   # wait for the stack (Grafana + sidecar) to exist first
+  sourceRef:
+    kind: GitRepository
+    name: flux-system       # the GitRepository Flux creates for itself (ADR 0023)
+    namespace: flux-system

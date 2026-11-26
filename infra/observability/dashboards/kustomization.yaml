@@ -1,0 +1,6 @@
+# Dashboards provisioned as code (ADR 0028). One ConfigMap per dashboard;
+# add the file here when you add one.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cluster-overview.yaml
