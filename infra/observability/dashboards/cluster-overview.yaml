@@ -20,21 +20,172 @@ data:
     {
       "schemaVersion": 41,
       "uid": "homelab-cluster-overview",
-      "title": "Homelab — cluster overview (USE) [placeholder]",
+      "title": "Homelab — cluster overview (USE)",
       "tags": ["homelab", "kubernetes", "use"],
       "timezone": "browser",
       "refresh": "30s",
       "time": { "from": "now-1h", "to": "now" },
+      "datasource": { "type": "prometheus" },
+      "templating": {
+        "list": [
+          {
+            "name": "instance",
+            "type": "query",
+            "datasource": { "type": "prometheus" },
+            "query": { "query": "label_values(node_cpu_seconds_total, instance)", "refId": "instance" },
+            "refresh": 1,
+            "includeAll": true,
+            "multi": true,
+            "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+          }
+        ]
+      },
       "panels": [
         {
           "id": 1,
+          "type": "row",
+          "title": "Nodes",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "collapsed": false
+        },
+        {
+          "id": 2,
           "type": "stat",
-          "title": "Nodes (placeholder — owner writes the real USE panels)",
-          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 0 },
+          "title": "Nodes total",
+          "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+          "targets": [ { "expr": "count(kube_node_info)", "refId": "A" } ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Nodes Ready",
+          "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
+          "targets": [ { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"true\"})", "refId": "A" } ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Nodes NotReady",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
+          "targets": [ { "expr": "count(kube_node_status_condition{condition=\"Ready\",status=\"false\"})", "refId": "A" } ]
+        },
+        {
+          "id": 5,
+          "type": "row",
+          "title": "Utilization — node-exporter (USE: U)",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+          "collapsed": false
+        },
+        {
+          "id": 6,
+          "type": "timeseries",
+          "title": "CPU utilization per node",
+          "description": "100 - idle%. rate()[5m] smooths spikes; avg by (instance) folds the per-cpu modes into one line per node.",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\",instance=~\"$instance\"}[5m])) * 100)", "refId": "A", "legendFormat": "{{instance}}" } ]
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Memory utilization per node",
+          "description": "(1 - MemAvailable / MemTotal) * 100",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "(1 - (node_memory_MemAvailable_bytes{instance=~\"$instance\"} / node_memory_MemTotal_bytes{instance=~\"$instance\"})) * 100", "refId": "A", "legendFormat": "{{instance}}" } ]
+        },
+        {
+          "id": 8,
+          "type": "timeseries",
+          "title": "Disk used — root filesystem per node",
+          "description": "mountpoint=\"/\" only; virtual filesystems excluded via fstype!~ so they don't skew the percentage.",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 14 },
+          "fieldConfig": { "defaults": { "unit": "percent", "min": 0, "max": 100 }, "overrides": [] },
+          "targets": [ { "expr": "100 * (1 - (node_filesystem_avail_bytes{instance=~\"$instance\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|devtmpfs|overlay|aufs|squashfs\"} / node_filesystem_size_bytes{instance=~\"$instance\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|devtmpfs|overlay|aufs|squashfs\"}))", "refId": "A", "legendFormat": "{{instance}}" } ]
+        },
+        {
+          "id": 9,
+          "type": "timeseries",
+          "title": "Load average 1min per node",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 14 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [ { "expr": "node_load1{instance=~\"$instance\"}", "refId": "A", "legendFormat": "{{instance}}" } ]
+        },
+        {
+          "id": 10,
+          "type": "row",
+          "title": "Saturation (USE: S)",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 22 },
+          "collapsed": false
+        },
+        {
+          "id": 11,
+          "type": "timeseries",
+          "title": "Load per core per node (>=1 = saturated)",
+          "description": "node_load1 / number of cpu cores (one idle series per core). Above 1.0 the node has more runnable tasks than cores.",
+          "gridPos": { "h": 6, "w": 12, "x": 0, "y": 23 },
+          "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+          "targets": [ { "expr": "node_load1{instance=~\"$instance\"} / count by (instance) (node_cpu_seconds_total{mode=\"idle\",instance=~\"$instance\"})", "refId": "A", "legendFormat": "{{instance}}" } ]
+        },
+        {
+          "id": 12,
+          "type": "row",
+          "title": "Workloads — kube-state-metrics",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 29 },
+          "collapsed": false
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Pods by phase",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 30 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [ { "expr": "sum by (phase) (kube_pod_status_phase)", "refId": "A", "legendFormat": "{{phase}}" } ]
+        },
+        {
+          "id": 14,
+          "type": "stat",
+          "title": "Pods Failed",
+          "gridPos": { "h": 8, "w": 6, "x": 12, "y": 30 },
+          "fieldConfig": { "defaults": { "unit": "short", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+          "targets": [ { "expr": "sum(kube_pod_status_phase{phase=\"Failed\"})", "refId": "A" } ]
+        },
+        {
+          "id": 15,
+          "type": "stat",
+          "title": "Pods Pending",
+          "gridPos": { "h": 8, "w": 6, "x": 18, "y": 30 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [ { "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})", "refId": "A" } ]
+        },
+        {
+          "id": 16,
+          "type": "row",
+          "title": "Capacity — requests vs allocatable",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 38 },
+          "collapsed": false
+        },
+        {
+          "id": 17,
+          "type": "timeseries",
+          "title": "CPU — sum(requests) vs sum(allocatable), cores",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 39 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
           "targets": [
-            { "expr": "count(kube_node_info)", "refId": "A" }
+            { "expr": "sum(kube_pod_container_resource_requests{resource=\"cpu\"})", "refId": "A", "legendFormat": "requests" },
+            { "expr": "sum(kube_node_status_allocatable{resource=\"cpu\"})", "refId": "B", "legendFormat": "allocatable" }
+          ]
+        },
+        {
+          "id": 18,
+          "type": "timeseries",
+          "title": "Memory — sum(requests) vs sum(allocatable)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 39 },
+          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(kube_pod_container_resource_requests{resource=\"memory\"})", "refId": "A", "legendFormat": "requests" },
+            { "expr": "sum(kube_node_status_allocatable{resource=\"memory\"})", "refId": "B", "legendFormat": "allocatable" }
           ]
         }
-      ],
-      "templating": { "list": [] }
+      ]
     }
