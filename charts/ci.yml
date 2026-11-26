@@ -22,7 +22,13 @@ charts:helm-lint:
     # to a file (downloadable artifact) while keeping it in the job log. set
     # -o pipefail so a lint failure still fails the job through the tee.
     - set -o pipefail
-    - helm lint charts/ghamr charts/yoshu --strict | tee helm-lint.txt
+    # Build the web-app subchart first (OCI repo ghcr.io/davidclb/charts is
+    # public, no creds needed) so lint sees the dependency instead of failing
+    # on "chart directory is missing these dependencies: web-app".
+    - helm dependency build charts/ghamr
+    # Only ghamr for now: charts/yoshu is an empty placeholder until the Yoshu
+    # chart exists (ADR 0025) — add it to the lint when it does.
+    - helm lint charts/ghamr --strict | tee helm-lint.txt
   artifacts:
     # when: always so the report is there even when the lint fails.
     when: always

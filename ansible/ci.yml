@@ -21,6 +21,10 @@ ansible:lint:
   script:
     - pip install --no-cache-dir "ansible-lint==${ANSIBLE_LINT_VERSION}"
     - cd ansible
+    # Install the collections the playbooks reference (requirements.yml) so
+    # syntax-check can resolve modules like community.docker.docker_compose_v2
+    # and kubernetes.core.helm instead of reporting unknown-module.
+    - ansible-galaxy collection install -r homelab/requirements.yml
     # Lint every playbook. ansible-lint discovers them, applies the default
     # ruleset (plus .ansible-lint if present), and fails on violations.
     # -f codeclimate writes the CodeClimate JSON GitLab renders in the MR.
