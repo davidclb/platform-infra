@@ -1,0 +1,16 @@
+# Validation of the Grafana dashboards provisioned as code (ADR 0028).
+# Rule #0, guardrail 3: no config merged without a machine checking it.
+# Static only: parses the ConfigMaps, no cluster needed.
+#
+# Pulled into the pipeline with:
+#   include:
+#     - local: infra/observability/ci.yml
+
+observability:dashboards:
+  stage: test
+  image: python:3.13-slim
+  rules:
+    - changes: [infra/observability/**/*]
+  script:
+    - pip install --no-cache-dir pyyaml
+    - python infra/observability/validate_dashboards.py
