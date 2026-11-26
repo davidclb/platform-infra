@@ -41,13 +41,10 @@ terraform:trivy:
   stage: test
   # Trivy, not tfsec (tfsec is now folded into Trivy). Pulled from ghcr, not
   # Docker Hub: Trivy's Docker Hub tags were supply-chain compromised in
-  # 2026 (stolen CI secrets) — hence a trusted registry, and a digest pin
-  # still to add (TODO below).
+  # 2026 (stolen CI secrets) — hence a trusted registry and a digest pin
+  # (a tag can be moved to a different image, a digest cannot).
   image:
-    # TODO: pin by digest (Trivy Docker Hub supply-chain compromise 2026):
-    #   docker pull ghcr.io/aquasecurity/trivy:0.76.2 && docker inspect \
-    #     --format='{{index .RepoDigests 0}}' ghcr.io/aquasecurity/trivy:0.76.2
-    name: ghcr.io/aquasecurity/trivy:0.76.2
+    name: ghcr.io/aquasecurity/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb
     entrypoint: [""]
   rules:
     - changes: [terraform/**/*]

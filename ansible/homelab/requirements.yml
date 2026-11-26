@@ -6,5 +6,6 @@ roles:
 
 collections:
   - name: community.general
+  - name: community.docker   # docker_compose_v2 module (pihole, vpn playbooks)
   - name: kubernetes.core
     version: ">=5.0.0"

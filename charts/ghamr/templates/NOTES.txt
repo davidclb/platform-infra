@@ -1,0 +1,3 @@
+Ghamr deployed. This is a wrapper chart: all templates come from the web-app
+subchart (vendored in charts/, digest pinned in Chart.lock).
+Backend service: see the web-app values under the `web-app:` key.

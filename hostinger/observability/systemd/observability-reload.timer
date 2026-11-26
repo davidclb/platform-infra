@@ -1,0 +1,17 @@
+# User timer: run observability-reload.service every 2 minutes, so a CI
+# rsync is picked up within ~2 min. Chosen over systemd.path (which watches
+# the directory) because a timer avoids inotify's non-recursion and
+# re-trigger pitfalls, and docker compose up -d is idempotent anyway.
+
+[Unit]
+Description=Periodically reconcile the observability compose stack
+
+[Timer]
+# First run shortly after the user manager starts, then every 2 minutes.
+OnBootSec=2min
+OnUnitActiveSec=2min
+# Don't stack runs if one is slow; keep the cadence steady.
+AccuracySec=15s
+
+[Install]
+WantedBy=timers.target

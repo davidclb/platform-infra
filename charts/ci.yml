@@ -1,0 +1,39 @@
+# Lint of the Helm charts (Rule #0, guardrail 3).
+#
+# helm lint only for now: it checks chart structure and templating. Policy
+# checks on the rendered manifests (conftest/Kyverno — no :latest, resources
+# set, etc.) are a later layer and need Rego policies written first.
+#
+# Pulled into the pipeline with:
+#   include:
+#     - local: charts/ci.yml
+
+charts:helm-lint:
+  stage: test
+  # Official-ish Helm image (alpine/helm tags without the leading v).
+  # Helm 4 is recent — verify alpine/helm:4.3.2 exists on the first run.
+  image:
+    name: alpine/helm:4.3.2
+    entrypoint: [""]
+  rules:
+    - changes: [charts/**/*]
+  script:
+    # Lint each chart. --strict turns warnings into failures. Tee the output
+    # to a file (downloadable artifact) while keeping it in the job log. set
+    # -o pipefail so a lint failure still fails the job through the tee.
+    - set -o pipefail
+    # The web-app subchart is VENDORED in charts/ghamr/charts/ (tgz committed,
+    # digest pinned in charts/ghamr/Chart.lock), so this job needs no network
+    # access to GHCR — `helm dependency build` is deliberately NOT run here
+    # (the anonymous OCI pull is unreliable from CI runners).
+    # To bump web-app: `helm dependency update charts/ghamr` locally, then
+    # commit the new tgz + Chart.lock.
+    # Only ghamr for now: charts/yoshu is an empty placeholder until the Yoshu
+    # chart exists (ADR 0025) — add it to the lint when it does.
+    - helm lint charts/ghamr --strict | tee helm-lint.txt
+  artifacts:
+    # when: always so the report is there even when the lint fails.
+    when: always
+    paths:
+      - helm-lint.txt
+    expire_in: 1 week

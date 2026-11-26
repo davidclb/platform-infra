@@ -1,0 +1,17 @@
+# User service: bring the observability stack up to the state on disk.
+# Triggered by observability-reload.timer, not enabled on its own.
+#
+# docker compose up -d is idempotent: it does nothing when nothing changed,
+# and recreates only the containers whose image/config the CI rsync updated.
+# This is how the stack reloads without the CI needing a shell on the VPS
+# (the deploy key is rsync-write-only).
+
+[Unit]
+Description=Reconcile the observability compose stack with the files on disk
+# Don't run before the network/docker socket is usable after boot.
+After=default.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/infra/observability
+ExecStart=/usr/bin/docker compose up -d --remove-orphans

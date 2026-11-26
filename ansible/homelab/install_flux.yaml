@@ -39,7 +39,7 @@
         definition:
           apiVersion: v1
           kind: Secret
-          metadata: { name: flux-system, namespace: flux-system }
+          metadata: {name: flux-system, namespace: flux-system}
           stringData:
             identity: "{{ flux_ssh_key }}"        # depuis Vault
             known_hosts: "{{ flux_known_hosts }}"

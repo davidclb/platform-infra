@@ -17,6 +17,7 @@
     - name: Check helm version
       ansible.builtin.command: helm version
       register: helm_version_output
-    - name: Print Helm version 
+      changed_when: false   # read-only check: nothing changes on the host
+    - name: Print Helm version
       ansible.builtin.debug:
         var: helm_version_output

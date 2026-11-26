@@ -1,0 +1,20 @@
+---
+# yamllint config, picked up by ansible-lint (yaml[...] rules).
+# line-length raised to 400: SSH host keys in flux_known_hosts are single
+# long lines by design — a host key cannot be wrapped.
+extends: default
+rules:
+  line-length:
+    max: 400
+  # playbooks/group_vars do not all start with "---" and that is fine
+  document-start: disable
+  # the rules below are REQUIRED by ansible-lint: a .yamllint that does not
+  # set them is considered incompatible and silently ignored
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  braces:
+    max-spaces-inside: 1
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true

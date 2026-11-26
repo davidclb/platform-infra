@@ -1,0 +1,46 @@
+# Lint of the Ansible playbooks (Rule #0, guardrail 3: no config merged
+# without a machine checking it).
+#
+# Static only: ansible-lint reads the playbooks, it does not reach the VMs
+# (no inventory connection, no SSH). A real run (--check, then apply) needs
+# the CI to reach the homelab over the network — a later layer.
+#
+# Pulled into the pipeline with:
+#   include:
+#     - local: ansible/ci.yml
+
+ansible:lint:
+  stage: test
+  # Plain python image + pinned ansible-lint from PyPI: the version is
+  # explicit and verifiable, no bundle-versioning confusion.
+  image: python:3.13-slim
+  rules:
+    - changes: [ansible/**/*]
+  variables:
+    ANSIBLE_LINT_VERSION: "26.11.1"
+  script:
+    - pip install --no-cache-dir "ansible-lint==${ANSIBLE_LINT_VERSION}"
+    - cd ansible
+    # Install requirements.yml — BOTH sections: `galaxy install` handles roles
+    # (geerlingguy.docker) AND collections (community.docker,
+    # kubernetes.core). `galaxy collection install` alone would skip the roles
+    # and leave syntax-check[specific] "role not found" failures.
+    - ansible-galaxy install -r homelab/requirements.yml
+    # Lint every playbook. ansible-lint discovers them, applies the default
+    # ruleset (plus .ansible-lint if present), and fails on violations.
+    # Run the default formatter first so the DETAILED violations land in the
+    # job log and the artifact (the codeclimate format only prints a summary).
+    # NB: `|| LINT_EXIT=$?` — the runner uses set -e, so a bare failing command
+    # would abort the script before we capture its exit code.
+    - ansible-lint > ansible-lint.txt 2>&1 || LINT_EXIT=$?
+    - cat ansible-lint.txt
+    - ansible-lint -f codeclimate > gl-codequality.json || true
+    - exit ${LINT_EXIT:-0}
+  artifacts:
+    # when: always so the report is uploaded even when the lint fails (which
+    # is exactly when you want to read it).
+    when: always
+    paths:
+      - ansible/ansible-lint.txt
+    reports:
+      codequality: ansible/gl-codequality.json

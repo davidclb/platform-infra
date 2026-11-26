@@ -17,6 +17,7 @@
       ansible.builtin.template:
         src: templates/wg-easy-docker-compose.yml.j2
         dest: /etc/docker/containers/wg-easy/docker-compose.yml
+        mode: '0644'
 
     - name: Start wg-easy
       community.docker.docker_compose_v2:
