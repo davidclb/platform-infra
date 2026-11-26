@@ -16,3 +16,4 @@ include:
   - local: terraform/ci.yml
   - local: ansible/ci.yml
   - local: charts/ci.yml
+  - local: infra/observability/ci.yml
