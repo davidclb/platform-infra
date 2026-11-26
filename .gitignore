@@ -42,4 +42,7 @@ age-secret.yaml
 
 # Helm package artifacts — generated on demand, never the source of truth
 *.tgz
+# ...except vendored subcharts: the tgz is committed and its digest pinned in
+# Chart.lock, so CI can lint fully offline (no GHCR pull at job time)
+!charts/*/charts/*.tgz
 chart_meta.txt
