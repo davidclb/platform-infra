@@ -21,20 +21,21 @@ ansible:lint:
   script:
     - pip install --no-cache-dir "ansible-lint==${ANSIBLE_LINT_VERSION}"
     - cd ansible
-    # Install the collections the playbooks reference (requirements.yml) so
-    # syntax-check can resolve modules like community.docker.docker_compose_v2
-    # and kubernetes.core.helm instead of reporting unknown-module.
-    - ansible-galaxy collection install -r homelab/requirements.yml
+    # Install requirements.yml — BOTH sections: `galaxy install` handles roles
+    # (geerlingguy.docker) AND collections (community.docker,
+    # kubernetes.core). `galaxy collection install` alone would skip the roles
+    # and leave syntax-check[specific] "role not found" failures.
+    - ansible-galaxy install -r homelab/requirements.yml
     # Lint every playbook. ansible-lint discovers them, applies the default
     # ruleset (plus .ansible-lint if present), and fails on violations.
     # Run the default formatter first so the DETAILED violations land in the
-    # job log and the artifact (the codeclimate format only prints a summary);
-    # keep its exit code as the job's exit code. Then write the CodeClimate
-    # JSON GitLab renders in the MR (generated even on failure).
-    - ansible-lint > ansible-lint.txt 2>&1; LINT_EXIT=$?
+    # job log and the artifact (the codeclimate format only prints a summary).
+    # NB: `|| LINT_EXIT=$?` — the runner uses set -e, so a bare failing command
+    # would abort the script before we capture its exit code.
+    - ansible-lint > ansible-lint.txt 2>&1 || LINT_EXIT=$?
     - cat ansible-lint.txt
     - ansible-lint -f codeclimate > gl-codequality.json || true
-    - exit $LINT_EXIT
+    - exit ${LINT_EXIT:-0}
   artifacts:
     # when: always so the report is uploaded even when the lint fails (which
     # is exactly when you want to read it).
