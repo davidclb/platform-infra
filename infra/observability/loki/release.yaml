@@ -1,0 +1,74 @@
+# Loki en mode Monolithic (1 replica, stockage filesystem sur PVC local) —
+# suffisant sur un homelab à 2 nœuds, moins de ressources que SimpleScalable.
+# ADR 0027 (logs) + ADR 0030 (déploiement Flux, local first).
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: loki
+  namespace: observability
+spec:
+  interval: 30m
+  timeout: 15m
+  chart:
+    spec:
+      chart: loki
+      version: "7.7.0"          # app Loki 3.6.20
+      sourceRef:
+        kind: HelmRepository
+        name: grafana-charts
+        namespace: observability
+  install:
+    crds: CreateReplace
+  upgrade:
+    crds: CreateReplace
+  values:
+    # chart loki 7.x : le mode monolithique s'appelle "SingleBinary"
+    # (templates/_helpers.tpl: loki.deployment.isSingleBinary)
+    deploymentMode: SingleBinary
+    # en SingleBinary, les cibles read/write/backend/gateway doivent être à 0
+    read:
+      replicas: 0
+    write:
+      replicas: 0
+    backend:
+      replicas: 0
+    gateway:
+      enabled: false
+    singleBinary:
+      replicas: 1
+      persistence:
+        enabled: true
+        size: 10Gi             # stockage local d'abord (migration OCI plus tard, ADR 0027)
+    loki:
+      auth_enabled: false      # interne, ClusterIP, derrière le même réseau que Grafana
+      image:
+        repository: grafana/loki
+        tag: "3.6.20"
+        # digest vérifié à la source (Docker Hub, 2026-11-27)
+        digest: sha256:be040ec94865dabe4821ce1c0f109452bd4b5acb566ae376672696eb43caedb7
+      # clés attendues par le chart (templates/validate.yaml) : loki.schemaConfig
+      # et loki.structuredConfig — TSDB sur filesystem local (PVC), schema v13
+      # (choix ADR 0030 : TSDB, pas boltdb-shipper déprécié).
+      schemaConfig:
+        - from: "2026-01-01"
+          store: tsdb
+          object_store: filesystem
+          schema: v13
+          index:
+            prefix: index_
+            period: 24h
+      structuredConfig:
+        limits_config:
+          retention_period: 168h   # 7 jours, borné (logs > métriques en volume); compactor dans le binaire mono
+      # stockage local filesystem sur le PVC (le chart exige bucketNames même
+      # en filesystem — valeurs bidons, inutilisées hors S3)
+      storage:
+        type: filesystem
+        filesystem:
+          chunks_directory: /var/loki/chunks
+          rules_directory: /var/loki/rules
+        bucketNames:
+          chunks: chunks
+          ruler: ruler
+          admin: admin
