@@ -1,0 +1,61 @@
+# Grafana dashboard provisioned as code (ADR 0028). Same rules as
+# cluster-overview.yaml: label grafana_dashboard=1, annotation grafana_folder,
+# title prefixed "NN —" (alphabetical sort), stable uid.
+#
+# The JSON below is a PLACEHOLDER shell: the RED panels (rate / errors /
+# duration per http_route) are written BY HAND by the repo owner.
+# Metric source: Ghamr backend on the homelab, scraped via ServiceMonitor
+# "backend" (job label = "backend-svc"), /metrics on :9464.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ghamr-red
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Homelab"
+data:
+  ghamr-red.json: |
+    {
+      "schemaVersion": 41,
+      "uid": "ghamr-red-api",
+      "title": "02 — Ghamr — RED (API)",
+      "tags": ["homelab", "ghamr", "red", "api"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "datasource": { "type": "prometheus" },
+      "templating": {
+        "list": [
+          {
+            "name": "route",
+            "type": "query",
+            "datasource": { "type": "prometheus" },
+            "query": { "query": "label_values(http_server_request_duration_seconds_count{job=\"backend-svc\"}, http_route)", "refId": "route" },
+            "refresh": 1,
+            "includeAll": true,
+            "multi": true,
+            "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "RED — TODO(owner): write the panels",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "collapsed": false
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "TODO — requests/s (placeholder, replace)",
+          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+          "targets": [
+            { "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"backend-svc\"}[5m]))", "refId": "A" }
+          ]
+        }
+      ]
+    }
