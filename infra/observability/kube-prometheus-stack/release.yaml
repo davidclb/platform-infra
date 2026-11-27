@@ -68,6 +68,13 @@ spec:
           url: http://loki.observability.svc.cluster.local:3100
           isDefault: false
           editable: true
+        - name: Tempo
+          type: tempo
+          uid: tempo
+          access: proxy
+          url: http://tempo.observability.svc.cluster.local:3100
+          isDefault: false
+          editable: true
     # no notif route for now but active 
     alertmanager:
       enabled: true

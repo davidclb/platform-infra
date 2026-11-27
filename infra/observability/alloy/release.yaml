@@ -60,3 +60,22 @@ spec:
             url = "http://loki.observability.svc.cluster.local:3100/loki/api/v1/push"
           }
         }
+
+        // Traces : reçoit l'OTLP des apps (Ghamr envoie vers :4318) et forward
+        // vers Tempo. Source : doc officielle Alloy otelcol components.
+        otelcol.receiver.otlp "default" {
+          grpc { endpoint = "0.0.0.0:4317" }
+          http { endpoint = "0.0.0.0:4318" }
+          output {
+            traces = [otelcol.exporter.otlp.tempo.input]
+          }
+        }
+
+        otelcol.exporter.otlp "tempo" {
+          client {
+            endpoint = "tempo.observability.svc.cluster.local:4317"
+            tls {
+              insecure = true
+            }
+          }
+        }

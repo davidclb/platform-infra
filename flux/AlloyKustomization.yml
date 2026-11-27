@@ -8,7 +8,8 @@ spec:
   path: ./infra/observability/alloy
   prune: true
   dependsOn:
-    - name: loki            # Alloy pousse vers Loki : Loki doit exister d'abord
+    - name: loki            # Alloy pousse les logs vers Loki
+    - name: tempo           # et forward les traces OTLP vers Tempo
   sourceRef:
     kind: GitRepository
     name: flux-system
