@@ -30,6 +30,9 @@ web-app:
     service:
       port: 80
       targetPort: 8080
+      metricsPort: 9464        # Ghamr's /metrics listener (METRICS_ADDR)
+      serviceMonitor:
+        enabled: true          # scraped by the cluster Prometheus (kube-prometheus-stack)
     envFrom:
       - configMapRef:
           name: backend-config
@@ -37,6 +40,7 @@ web-app:
           name: backend-secret
     config:
       PORT: "8080"
+      METRICS_ADDR: ":9464"   # /metrics served on its own listener, not via the Ingress
       DB_PATH: "data/ghamr.db"
       FRONTEND_URL: "https://ghamrr-lab.site"
       FREE_AI_DAILY_BUDGET_SECS: "72000"

@@ -1,0 +1,23 @@
+{{- if .Values.backend.service.serviceMonitor.enabled }}
+# Scraped by the cluster's Prometheus (kube-prometheus-stack): it selects
+# ServiceMonitors carrying the label `release: kube-prometheus-stack`
+# (spec.serviceMonitorSelector of the Prometheus CR).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ .Values.backend.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Values.backend.name }}
+    app.kubernetes.io/part-of: {{ .Values.app.name }}
+    release: kube-prometheus-stack
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.backend.name }}
+  endpoints:
+    - port: metrics        # the named port on the backend Service
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+{{- end }}
