@@ -14,13 +14,16 @@ metadata:
   name: grafana-dashboard-cluster-overview
   namespace: observability
   labels:
-    grafana_dashboard: "1"
+    grafana_dashboard: "1"   # sidecar selector
+  annotations:
+    grafana_folder: "Homelab"   # folder in Grafana (chart default folderAnnotation); folders are flat in OSS
+    # Title is prefixed "NN —" because Grafana sorts dashboards alphabetically by title.
 data:
   cluster-overview.json: |
     {
       "schemaVersion": 41,
       "uid": "homelab-cluster-overview",
-      "title": "Homelab — cluster overview (USE)",
+      "title": "01 — Homelab — cluster overview (USE)",
       "tags": ["homelab", "kubernetes", "use"],
       "timezone": "browser",
       "refresh": "30s",
