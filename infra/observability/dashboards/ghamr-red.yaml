@@ -44,17 +44,77 @@ data:
         {
           "id": 1,
           "type": "row",
-          "title": "RED — TODO(owner): write the panels",
+          "title": "Rate — requests/s by route",
           "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
           "collapsed": false
         },
         {
           "id": 2,
-          "type": "stat",
-          "title": "TODO — requests/s (placeholder, replace)",
-          "gridPos": { "h": 6, "w": 8, "x": 0, "y": 1 },
+          "type": "timeseries",
+          "title": "Requests per second, by http_route",
+          "description": "RED Rate. _count of the duration histogram = number of requests; rate over 5m. Filtered by the $route variable.",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
           "targets": [
-            { "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"backend-svc\"}[5m]))", "refId": "A" }
+            { "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_route=~\"$route\"}[5m]))", "refId": "A", "legendFormat": "{{http_route}}" }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "row",
+          "title": "Errors — 5xx",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+          "collapsed": false
+        },
+        {
+          "id": 4,
+          "type": "timeseries",
+          "title": "5xx per second, by http_route",
+          "description": "RED Errors. Same histogram, filtered on status 5xx. This is what GhamrHighErrorRate alerts on (>5% for 10m).",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum by (http_route) (rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_route=~\"$route\",http_response_status_code=~\"5..\"}[5m]))", "refId": "A", "legendFormat": "{{http_route}}" }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Error ratio (5xx / all requests)",
+          "description": "The alert threshold is 5% (GhamrHighErrorRate): yellow from 1%, red from 5%.",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+          "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "yellow", "value": 0.01 }, { "color": "red", "value": 0.05 } ] } }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_route=~\"$route\",http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_route=~\"$route\"}[5m]))", "refId": "A" }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "row",
+          "title": "Duration — latency",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+          "collapsed": false
+        },
+        {
+          "id": 7,
+          "type": "timeseries",
+          "title": "Latency p95 by http_route (s)",
+          "description": "RED Duration. histogram_quantile over the _bucket series; le = bucket boundary label. Buckets come from the app (5ms..300s).",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            { "expr": "histogram_quantile(0.95, sum by (le, http_route) (rate(http_server_request_duration_seconds_bucket{job=\"backend-svc\",http_route=~\"$route\"}[5m])))", "refId": "A", "legendFormat": "{{http_route}}" }
+          ]
+        },
+        {
+          "id": 8,
+          "type": "stat",
+          "title": "Requests in flight",
+          "description": "http_server_active_requests — saturation side: how many requests are being served right now.",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(http_server_active_requests{job=\"backend-svc\"})", "refId": "A" }
           ]
         }
       ]
