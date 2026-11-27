@@ -2,5 +2,5 @@ dependencies:
 - name: web-app
   repository: oci://ghcr.io/davidclb/charts
   version: 1.1.0
-digest: sha256:71930d18aa79397b0bebcfccdf749872bdf4c24fb5b5b52ac6bff7ab0e608b61
-generated: "2026-11-27T01:53:23.59134376+01:00"
+digest: sha256:604e794686f74463c7f90cdc3b20c16480aaeca675e228df52a6ec0188d03ff1
+generated: "2026-11-27T08:25:15.432416225+01:00"
