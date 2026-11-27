@@ -24,6 +24,13 @@ backend:
   service:
     port: 80
     targetPort: 8080
+    # The port /metrics answers on, inside the Pod. Leave it out for an app
+    # without metrics: no metrics port is declared then.
+    metricsPort: 9464
+    # ServiceMonitor for the cluster's Prometheus (kube-prometheus-stack).
+    # Off by default; enable per app that exposes /metrics.
+    serviceMonitor:
+      enabled: false
   envFrom:
     - configMapRef:
         name: backend-config
