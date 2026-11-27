@@ -116,6 +116,77 @@ data:
           "targets": [
             { "expr": "sum(http_server_active_requests{job=\"backend-svc\"})", "refId": "A" }
           ]
+        },
+        {
+          "id": 9,
+          "type": "row",
+          "title": "Client errors — 4xx (429 rate-limit, 401 auth)",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 },
+          "collapsed": false
+        },
+        {
+          "id": 10,
+          "type": "timeseries",
+          "title": "4xx per second, by route and status",
+          "description": "Same request histogram, filtered on 4xx. 429 = rate limiter refused (quota), 401/403 = auth. User-visible but not an outage.",
+          "gridPos": { "h": 8, "w": 16, "x": 0, "y": 28 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum by (http_route, http_response_status_code) (rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_route=~\"$route\",http_response_status_code=~\"4..\"}[5m]))", "refId": "A", "legendFormat": "{{http_route}} {{http_response_status_code}}" }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "stat",
+          "title": "429 rate-limited /s",
+          "description": "Quota refusals per second. Red from 1/s: users are being throttled.",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+          "fieldConfig": { "defaults": { "unit": "reqps", "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"backend-svc\",http_response_status_code=\"429\"}[5m]))", "refId": "A" }
+          ]
+        },
+        {
+          "id": 12,
+          "type": "row",
+          "title": "Business — logins, payments, AI cost, realtime",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+          "collapsed": false
+        },
+        {
+          "id": 13,
+          "type": "timeseries",
+          "title": "Logins & Stripe events /s",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 37 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum(rate(ghamr_auth_logins_total{job=\"backend-svc\"}[5m]))", "refId": "A", "legendFormat": "logins/s" },
+            { "expr": "sum(rate(ghamr_stripe_events_total{job=\"backend-svc\"}[5m]))", "refId": "B", "legendFormat": "stripe events/s" }
+          ]
+        },
+        {
+          "id": 14,
+          "type": "timeseries",
+          "title": "AI cost: tokens/s + audio s/s by provider",
+          "description": "gen_ai_client_token_usage (histogram -> _sum) = LLM tokens billed; ghamr_ai_audio_duration_seconds_total = audio seconds billed by transcription providers.",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 37 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            { "expr": "sum by (gen_ai_provider_name) (rate(gen_ai_client_token_usage_sum{job=\"backend-svc\"}[5m]))", "refId": "A", "legendFormat": "tokens/s {{gen_ai_provider_name}}" },
+            { "expr": "sum by (gen_ai_provider_name) (rate(ghamr_ai_audio_duration_seconds_total{job=\"backend-svc\"}[5m]))", "refId": "B", "legendFormat": "audio s/s {{gen_ai_provider_name}}" }
+          ]
+        },
+        {
+          "id": 15,
+          "type": "timeseries",
+          "title": "Realtime sessions: active vs limit",
+          "description": "ghamr_realtime_sessions_active over ghamr_realtime_sessions_limit (SPEECHMATICS_RT_MAX). At the limit, viewers wait or fall back.",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 37 },
+          "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+          "targets": [
+            { "expr": "ghamr_realtime_sessions_active{job=\"backend-svc\"}", "refId": "A", "legendFormat": "active" },
+            { "expr": "ghamr_realtime_sessions_limit{job=\"backend-svc\"}", "refId": "B", "legendFormat": "limit" }
+          ]
         }
       ]
     }
