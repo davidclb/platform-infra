@@ -59,6 +59,15 @@ spec:
           provider:
             allowUiUpdates: false
             disableDelete: false
+      # Data sources as code (ADR 0030). Tempo sera ajouté à l'étape traces.
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          uid: loki
+          access: proxy
+          url: http://loki.observability.svc.cluster.local:3100
+          isDefault: false
+          editable: true
     # no notif route for now but active 
     alertmanager:
       enabled: true

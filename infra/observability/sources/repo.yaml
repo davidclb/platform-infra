@@ -1,0 +1,10 @@
+# HelmRepository officiel Grafana (charts loki, alloy, tempo) — partagé par
+# les HelmRelease de infra/observability/{loki,alloy,tempo}.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: grafana-charts
+  namespace: observability
+spec:
+  interval: 1h
+  url: https://grafana.github.io/helm-charts
