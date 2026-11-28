@@ -50,14 +50,17 @@ spec:
       # clés attendues par le chart (templates/validate.yaml) : loki.schemaConfig
       # et loki.structuredConfig — TSDB sur filesystem local (PVC), schema v13
       # (choix ADR 0030 : TSDB, pas boltdb-shipper déprécié).
+      # le chart rend `schema_config:` + le contenu de schemaConfig → il faut
+      # la map {configs: [...]} (Loki attend schema_config.configs)
       schemaConfig:
-        - from: "2026-01-01"
-          store: tsdb
-          object_store: filesystem
-          schema: v13
-          index:
-            prefix: index_
-            period: 24h
+        configs:
+          - from: "2026-01-01"
+            store: tsdb
+            object_store: filesystem
+            schema: v13
+            index:
+              prefix: index_
+              period: 24h
       structuredConfig:
         limits_config:
           retention_period: 168h   # 7 jours, borné (logs > métriques en volume); compactor dans le binaire mono
