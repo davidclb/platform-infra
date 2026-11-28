@@ -1,0 +1,118 @@
+# Grafana dashboard provisioned as code (ADR 0028). Traces of Ghamr, read
+# from Tempo (datasource uid "tempo") with TraceQL metrics queries.
+# Span attributes emitted by the app (httpx/trace.go): resource.service.name
+# = "ghamr-api", span.http.route, span.http.request.method,
+# span.http.response.status_code, status.code = ERROR on 5xx.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-ghamr-traces
+  namespace: observability
+  labels:
+    grafana_dashboard: "1"
+  annotations:
+    grafana_folder: "Homelab"
+data:
+  ghamr-traces.json: |
+    {
+      "schemaVersion": 41,
+      "uid": "ghamr-traces",
+      "title": "03 — Ghamr — traces (Tempo)",
+      "tags": ["homelab", "ghamr", "traces"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-1h", "to": "now" },
+      "templating": {
+        "list": [
+          {
+            "name": "route",
+            "type": "query",
+            "datasource": { "type": "tempo", "uid": "tempo" },
+            "query": "{ resource.service.name = \"ghamr-api\" } | distinct(span.http.route)",
+            "refresh": 1,
+            "includeAll": true,
+            "multi": true,
+            "current": { "selected": true, "text": ["All"], "value": ["$__all"] }
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "Volume & errors",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+          "collapsed": false
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Traced requests per 5m, by route",
+          "description": "TraceQL metrics query: count of server spans by span.http.route.",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            { "queryType": "traceql", "query": "{ resource.service.name = \"ghamr-api\" && span.http.route =~ \"$route\" } | count() by (span.http.route)", "refId": "A", "legendFormat": "{{span.http.route}}" }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "timeseries",
+          "title": "Error traces per 5m (status.code = ERROR, i.e. 5xx)",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "targets": [
+            { "queryType": "traceql", "query": "{ resource.service.name = \"ghamr-api\" && span.http.route =~ \"$route\" && status.code = ERROR } | count()", "refId": "A" }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "row",
+          "title": "Latency (server span duration)",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 },
+          "collapsed": false
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "Server span p95 by route (s)",
+          "description": "quantile over span duration, by route — same p95 as the RED dashboard's histogram_quantile, but from traces.",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            { "queryType": "traceql", "query": "{ resource.service.name = \"ghamr-api\" && span.http.route =~ \"$route\" } | quantile(duration, 0.95) by (span.http.route)", "refId": "A", "legendFormat": "{{span.http.route}}" }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "stat",
+          "title": "Avg server span duration (s)",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "targets": [
+            { "queryType": "traceql", "query": "{ resource.service.name = \"ghamr-api\" && span.http.route =~ \"$route\" } | avg(duration)", "refId": "A" }
+          ]
+        },
+        {
+          "id": 7,
+          "type": "row",
+          "title": "Recent traces",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 },
+          "collapsed": false
+        },
+        {
+          "id": 8,
+          "type": "traces",
+          "title": "Latest traces (open a trace to see its spans: subprocess.yt-dlp, AI calls, SQLite…)",
+          "datasource": { "type": "tempo", "uid": "tempo" },
+          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 19 },
+          "targets": [
+            { "queryType": "traceql", "query": "{ resource.service.name = \"ghamr-api\" && span.http.route =~ \"$route\" }", "refId": "A", "limit": 20 }
+          ]
+        }
+      ]
+    }
