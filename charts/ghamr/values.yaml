@@ -42,6 +42,7 @@ web-app:
       PORT: "8080"
       METRICS_ADDR: ":9464"   # /metrics served on its own listener, not via the Ingress
       DB_PATH: "data/ghamr.db"
+      ADMIN_EMAIL: "admin@admin.fr"   # IsAdmin: the account with this exact email is admin
       FRONTEND_URL: "https://ghamrr-lab.site"
       FREE_AI_DAILY_BUDGET_SECS: "72000"
       WEBSHARE_PROXY_HOST: "p.webshare.io"
