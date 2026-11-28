@@ -1,0 +1,13 @@
+{{- if .Values.backend.persistence.enabled }}
+# The backend's SQLite file lives here: without it every pod gets its own
+# ephemeral DB (accounts, cache) and restarts lose everything.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .Values.backend.name }}-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: {{ .Values.backend.persistence.size | default "1Gi" }}
+{{- end }}

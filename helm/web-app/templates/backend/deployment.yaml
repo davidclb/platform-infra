@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: {{ .Values.backend.name }}
 spec:
-  replicas: {{ .Values.replicaCount }}                    # Nombre de Pods souhaités
+  replicas: {{ .Values.backend.replicaCount | default .Values.replicaCount }}   # backend: 1 with a PVC (SQLite is single-writer)
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}        # Nombre d'anciennes versions conservées
   progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}   # Timeout pour une mise à jour
   minReadySeconds: {{ .Values.minReadySeconds }}            # Temps avant de considérer un Pod disponible
@@ -19,6 +19,9 @@ spec:
     metadata:
       labels:
         app: {{ .Values.backend.name }}
+      annotations:
+        # envFrom is read at pod start: re-roll the pods when the ConfigMap changes.
+        checksum/config: {{ include (print $.Template.BasePath "/backend/configmap.yaml") . | sha256sum }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -37,3 +40,14 @@ spec:
           {{- end }}
         envFrom:
           {{- toYaml .Values.backend.envFrom | nindent 10 }}
+        {{- if .Values.backend.persistence.enabled }}
+        volumeMounts:
+          - name: data
+            mountPath: /app/data
+        {{- end }}
+      {{- if .Values.backend.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.backend.name }}-data
+      {{- end }}

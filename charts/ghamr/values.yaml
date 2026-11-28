@@ -24,6 +24,10 @@ web-app:
   
   backend:
     name: backend
+    replicaCount: 1            # SQLite single-writer: one pod on the RWO PVC
+    persistence:
+      enabled: true            # /app/data on a PVC — the DB survives restarts
+      size: 1Gi
     image:
       repository: ghcr.io/davidclb/ghamr-backend
       tag: sha-466a76086beff4d732bac8423148a51d0b160514
