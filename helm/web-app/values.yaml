@@ -18,6 +18,13 @@ app:
   
 backend:
   name: backend
+  # SQLite is a single-writer store: with persistence.enabled the backend must
+  # run a single replica (the PVC is ReadWriteOnce). Defaults to the global
+  # replicaCount when unset.
+  replicaCount: 3
+  persistence:
+    enabled: false
+    size: 1Gi
   image:
     repository: ghcr.io/davidclb/ghamr-backend
     tag: sha-ebcf89a424ff11c130f62ddc1c649fbb20531a22
